@@ -7,9 +7,9 @@ import logging
 import serial
 from . import bus
 from serial import SerialException
-import protobuf_utils.ino_msg_pb2
-import protobuf_utils.pla_log_pb2
-import protobuf_utils.msvcrt
+from .protobuf_utils.protobuf_definitions.build import ino_msg_pb2
+from .protobuf_utils.protobuf_definitions.build import pla_log_pb2
+from .protobuf_utils.protobuf_definitions.build import pla_log_pb2
 
 
 # from queue import Queue, Empty
@@ -225,7 +225,7 @@ class PLA_INO_Sensor:
         and sending the pid control parameters
         """
         try:
-            self.serial = serial.Serial(self.serial_port)
+            self.serial = serial.Serial(self.serial_port, 115200, timeout=60)
             logging.info("Connection to Ino successfull.")
             self._failed_connection_attempts = 0
         except Exception as e:
