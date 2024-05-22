@@ -1,13 +1,12 @@
 import serial
 import serial.threaded
-import ino_msg_pb2
-import pla_log_pb2
-import msvcrt
+from .protobuf_definitions.build import ino_msg_pb2
+from .protobuf_definitions.build import pla_log_pb2
 import sys
 import re
 import csv
 import time
-
+import logging
 #Remove any escape characters and restore the orignal data.
 def xor_and_remove_value(byte_array, value_to_find):
     """
@@ -108,7 +107,7 @@ def write_tick_and_temperature_to_csv(tick, temperature, filename='output.csv'):
         writer.writerow([tick, temperature])
 
 
-def create_request(request, sequence):
+def create_request(request, sequence,flag):
     # Serialize the object using protobuf
     serial_request = request.SerializeToString()
 
@@ -125,13 +124,13 @@ def create_request(request, sequence):
     return processed
 
 
-def create_heating_request(target, sequence):
+def create_heating_request(target, sequence,flag):
     # Create an object for the message data and populate the neccessary fields.
     request = ino_msg_pb2.serial_request()
     request.settings.target = target
 
     # Call the function to serialize and frame the data.
-    serial_data = create_request(request, sequence)
+    serial_data = create_request(request, sequence,flag)
     print(serial_data.hex())
     return serial_data
 

@@ -9,7 +9,8 @@ from . import bus
 from serial import SerialException
 from .protobuf_utils.protobuf_definitions.build import ino_msg_pb2
 from .protobuf_utils.protobuf_definitions.build import pla_log_pb2
-from .protobuf_utils.protobuf_definitions.build import pla_log_pb2
+from .protobuf_utils import protobuf_utils
+
 
 
 # from queue import Queue, Empty
@@ -57,6 +58,10 @@ class PLA_INO_Sensor:
             "klippy:disconnect", self._handle_disconnect
         )
         self.printer.register_event_handler("klippy:shutdown", self._handle_shutdown)
+
+        self.flag = 126
+        self.escape = 125
+        self.sequence = 0
 
         # add the gcode commands
         if "INO_FREQUENCY" in self.gcode.ready_gcode_handlers.keys():
@@ -188,6 +193,12 @@ class PLA_INO_Sensor:
         }
 
     ### INO specifics
+
+    def send_temp(self):
+        serial_data = protobuf_utils.create_heating_request(self.target_temp, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
+
     def _sample_PLA_INO(self, eventtime):
         """This function is called infinitely by the reactor class every SERIAL_TIMER interval.
         Upon execution, it either tries to establish a connection to the INO OR - if connection for
@@ -203,9 +214,6 @@ class PLA_INO_Sensor:
             try:
                 if self.serial is None:
                     self._handle_connect()
-                else:
-                    self.write_queue.append(f"s {self.target_temp}")
-                    self.write_queue.append("d")
             except serial.SerialException:
                 logging.error("Unable to communicate with Ino. Sample")
                 self.temp = 0.0
@@ -247,19 +255,11 @@ class PLA_INO_Sensor:
 
         logging.info("Ino read/write timers started.")
 
-        if self._first_connect:
-            s = (
-                "kp "
-                + str(float(self.pid_Kp))
-                + ";ki "
-                + str(float(self.pid_Ki))
-                + ";kd "
-                + str(float(self.pid_Kd))
-                + ";q"
-            )
-            self.write_queue.append(s)
-            self._first_connect = False
 
+        if self._first_connect:
+            message = self._create_PID_message(self.pid_Ki,self.pid_Kp,self.pid_Kd)
+            self.write_queue.append(message)
+            
     def _run_Read(self, eventtime):
         """Readout of the incoming messages over the serial port
 
@@ -270,28 +270,33 @@ class PLA_INO_Sensor:
         """
         # Do non-blocking reads from serial and try to find lines
         while True:
+            # try:
+            raw_bytes = bytearray(self.serial.read_until(self.flag.to_bytes()))
+            # except Exception as e:
+            #     logging.info(f"J: error in serial readout: {e}")
+            #     self.disconnect()
+            #     break
+            # else:
+            # Decoded any escaped bytes to get the original data frame.
+            output = protobuf_utils.xor_and_remove_value(raw_bytes[:-1], bytes([self.escape]))
+
+            # Calculate the checksum, and compare it with the value in the received packet.
+            checksum = output[-1]
+            calculated_checksum = protobuf_utils.calculate_checksum(output[:-1])
+        
+            if checksum != calculated_checksum:
+                logging.warning(f"checksum failed: packet: {checksum}, calculated: {calculated_checksum}")
+                continue
             try:
-                raw_bytes = ""
-                if self.serial.in_waiting > 0:
-                    raw_bytes = self.serial.read()
-            except Exception as e:
-                logging.info(f"J: error in serial readout: {e}")
-                self.disconnect()
-                break
-
-            if len(raw_bytes):
-                text_buffer = self.read_buffer + str(raw_bytes.decode())
-                while True:
-                    i = text_buffer.find("\x00")
-                    if i >= 0:
-                        line = text_buffer[0 : i + 1]
-                        self.read_queue.append(line.strip())
-                        text_buffer = text_buffer[i + 1 :]
-                    else:
-                        break
-                self.read_buffer = text_buffer
-
+                # Deserialize the protobuf data in to an object.
+                response = ino_msg_pb2.serial_response()
+                logging.info(f"output {output}")
+                response.ParseFromString(bytes(output[1:-1]))
+            except:
+                logging.warning("failed to decode")
             else:
+                message_content = response.log_msg.message
+                self.read_queue.append(message_content)
                 break
 
         # logging.info(f"J: Read queue contents: {self.read_queue}")
@@ -310,10 +315,10 @@ class PLA_INO_Sensor:
         """
         while not len(self.write_queue) == 0:
             text_line = self.write_queue.pop(0)
-
             if text_line:
                 try:
-                    self.serial.write((text_line + ";\x00").encode())
+                    logging.info(f"writing {text_line}")
+                    self.serial.write(text_line)
                 except Exception as e:
                     logging.info(f"J: error in serial communication (writing): {e}")
                     self.disconnect()
@@ -322,60 +327,7 @@ class PLA_INO_Sensor:
         # logging.info("J: Write queue is empty.")
         return eventtime + SERIAL_TIMER
 
-    def _get_extruder_for_commands(self, index, gcmd):
-        """lookup of the extruder the heater and sensor belong to
-
-        :param index: extruder number
-        :type index: int
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        if index is not None:
-            section = "extruder"
-            if index:
-                section = "extruder%d" % (index,)
-            extruder = self.printer.lookup_object(section, None)
-            if extruder is None:
-                raise gcmd.error("Extruder not configured.")
-        else:
-            extruder = self.printer.lookup_object("toolhead").get_extruder()
-        return extruder
-
-    def _send_commands_to_extruder_ino(self, heater, message, gcmd):
-        """write messages to queue if heater is PLA_INO heater
-
-        :param heater: heater object
-        :type heater: ?
-        :param message: message that should be put in the queue
-        :type message: ?
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        :raises gcmd.error: raises error if command can not be executed on the configured heater
-        """
-        if heater.__class__.__name__ == "PLA_INO_Heater":
-            queue = heater.sensor.write_queue
-            queue.append(message)
-        else:
-            raise gcmd.error("Command not defined for this heater.")
-
-    cmd_INO_FREQUENCY_help = ""
-
-    def cmd_INO_FREQUENCY(self, gcmd):
-        """custom gcode command for changing the INO frequency
-
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        t = gcmd.get_float("F", 0.0)
-        index = gcmd.get_int("T", None, minval=0)
-        s = "f " + str(int(t))
-
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
-
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
-
-    cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
+    cmd_INO_PID_TUNE_help = ""
 
     def cmd_INO_PID_TUNE(self, gcmd):
         """custom gcode command for tuning the PID
@@ -383,14 +335,11 @@ class PLA_INO_Sensor:
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-        variable = gcmd.get_float("PID", 0.0)
-        index = gcmd.get_int("T", None, minval=0)
-        s = "pid " + str(float(variable))
-
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
-
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
+        request = ino_msg_pb2.serial_request()
+        request.ino_cmd.command = ino_msg_pb2.start_autotune
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
 
     cmd_INO_SET_PID_VALUES_help = ""
 
@@ -405,138 +354,63 @@ class PLA_INO_Sensor:
         heater = extruder.get_heater()
 
         kp = gcmd.get_float("Kp", 0.0)
-        s = "kp " + str(float(kp))
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
-
         ki = gcmd.get_float("Ki", 0.0)
-        s = "ki " + str(float(ki))
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
-
         kd = gcmd.get_float("Kd", 0.0)
-        s = "kd " + str(float(kd))
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
+        message = self._create_PID_message(ki,kp,kd)
+        self.write_queue.append(message)
+    
+    def _create_PID_message(self, ki, kp, kd):
+        request = ino_msg_pb2.serial_request()
+        self.target_temp = 0
+        request.settings.target = self.target_temp
+        request.settings.ki = ki
+        request.settings.kp = kp
+        request.settings.kd = kd
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        return serial_data
 
-    cmd_INO_RESET_ERROR_FLAGS_help = "resets internel errors in INO"
+    cmd_INO_FREQUENCY_help = "Command INO_FREQUENCY is deprecated!"
 
+    # dead
+    def cmd_INO_FREQUENCY(self, gcmd):
+        logging.warning("Command INO_FREQUENCY is deprecated!")
+
+    cmd_INO_RESET_ERROR_FLAGS_help = "Command INO_RESET_ERROR_FLAGS is deprecated!"
+
+    # dead
     def cmd_INO_RESET_ERROR_FLAGS(self, gcmd):
-        """custom gcode command for resetting the error flags
+        logging.warning("Command INO_RESET_ERROR_FLAGS is deprecated!")
 
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        index = gcmd.get_int("T", None, minval=0)
-        s = "q"
+    cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
 
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
-
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
-
-    cmd_INO_DEBUG_OUT_help = "output one debug line from ino board"
-
+    # dead
     def cmd_INO_DEBUG_OUT(self, gcmd):
-        """custom gcode command for outputting one debug line from the ino board
+        logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        index = gcmd.get_int("T", None, minval=0)
-
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
-        message1 = heater.sensor.debug_dictionaries[-1]
-        message2 = heater.sensor.read_from_board_outs[-1]
-
-        self.gcode.respond_info(
-            "INO debug output:\n" + str(message1) + "\n" + str(message2)
-        )
-
-    cmd_INO_READ_PID_VALUES_help = "read out internal pid values from ino board"
-
+    cmd_INO_READ_PID_VALUES_help = "Command INO_READ_PID_VALUES is deprecated!"
+    # dead
     def cmd_INO_READ_PID_VALUES(self, gcmd):
-        """custom gcode command for reading the current PID values
+        logging.info("Command INO_READ_PID_VALUES is deprecated!")
 
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        index = gcmd.get_int("T", None, minval=0)
-        s = "a"
-
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
-
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
-
-    cmd_INO_FIRMWARE_VERSION_help = "read out firmware version of INO"
-
+    cmd_INO_FIRMWARE_VERSION_help = "Command INO_FIRMWARE_VERSION is deprecated!"
+    # dead for now
     def cmd_INO_FIRMWARE_VERSION(self, gcmd):
-        """custom gcode command for reading the firmware version of the INO
-
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        index = gcmd.get_int("T", None, minval=0)
-        s = "v"
-
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
-
-        self._send_commands_to_extruder_ino(heater, s, gcmd)
+        logging.info("Command INO_FIRMWARE_VERSION is deprecated!")
 
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:
             text_line = self.read_queue.pop(0)
-            tmp = str(text_line.rstrip("\x00"))
-            if tmp.startswith("ERROR"):
-                self.gcode.respond_info(
-                    "INO ERROR:)\n" + str(tmp)
-                )  # output to mainsail console
-                logging.info(
-                    "\n--------------------ERROR: ------------------------\n"
-                    + str(tmp)
-                    + "\n--------------------ERROR: ------------------------\n"
-                )
-            elif tmp.startswith("tick:"):
-                pairs = [pair.strip() for pair in tmp.split(",")]
-                debug_dictionary = {}
-                for pair in pairs:
-                    key, value = pair.split(":")
-                    debug_dictionary[key.strip()] = value.strip()
-
-                self.last_debug_message = ",".join(
-                    [str(i) for i in debug_dictionary.values()]
-                )
-
-                self.temp = int(debug_dictionary["T_a"]) / 100
-
-                read_from_board = str(debug_dictionary["err"]).zfill(
-                    6
-                )  # fill left of string with zeros if not 6 long
-                read_from_board_out = read_from_board
-
-                if read_from_board[0] == "1":
-                    read_from_board_out = read_from_board_out + " | open circuit"
-                if read_from_board[1] == "1":
-                    read_from_board_out = read_from_board_out + " | no heartbeat"
-                if read_from_board[2] == "1":
-                    read_from_board_out = read_from_board_out + " | heating slow"
-                if read_from_board[3] == "1":
-                    read_from_board_out = read_from_board_out + " | heating fast"
-                if read_from_board[4] == "1":
-                    read_from_board_out = read_from_board_out + " | no temp read"
-
-                self.debug_dictionaries.append(debug_dictionary)
-                self.read_from_board_outs.append(read_from_board_out)
-                # temporary measure to prevent any sort of memory problems
-                if len(self.debug_dictionaries) > 100:
-                    self.debug_dictionaries.pop(0)
-                if len(self.read_from_board_outs) > 100:
-                    self.read_from_board_outs.pop(0)
-
+            if text_line.startswith("Tick"):
+                text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
+                logging.info(text_dict)
+                if "Temp" in text_dict:
+                    self.temp = float(text_dict["Temp"])
+                else:
+                    logging.warning("No temperature transmitted from INO.")
             else:
-                self.gcode.respond_info(f"Output from INO: {str(tmp)}")
-
+                logging.info(text_line)
 
 def load_config(config):
     # Register sensor

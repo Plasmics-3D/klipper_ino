@@ -122,11 +122,8 @@ class PLA_INO_Heater:
         with self.lock:
             self.target_temp = degrees
             logging.info(f"J: set_temp -> to {self.target_temp} degrees")
-            s = f"s {str(int(self.target_temp))}"
-            self.sensor.target_temp = self.target_temp
-            self.sensor.write_queue.append(s)
-            # also always get the debug output after setting the temperature
-            self.sensor.write_queue.append("d")
+            self.sensor.target_temp = int(self.target_temp)
+            self.sensor.send_temp()
 
     def get_temp(self, eventtime):
         with self.lock:
