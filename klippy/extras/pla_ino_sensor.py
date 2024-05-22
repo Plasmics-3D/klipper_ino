@@ -7,6 +7,10 @@ import logging
 import serial
 from . import bus
 from serial import SerialException
+import protobuf_utils.ino_msg_pb2
+import protobuf_utils.pla_log_pb2
+import protobuf_utils.msvcrt
+
 
 # from queue import Queue, Empty
 

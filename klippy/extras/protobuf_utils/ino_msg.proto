@@ -1,0 +1,104 @@
+syntax = "proto2";
+
+import "nanopb.proto";
+import "pla_log.proto";
+
+message settings {
+    optional float target = 1;
+    optional float ki = 2;
+    optional float kp = 3;
+    optional float kd = 4;
+}
+
+message pla_info {
+    optional string fw_version = 1 [(nanopb).max_size = 10];
+    optional string hw_version = 2 [(nanopb).max_size = 10];
+    optional string name = 3 [(nanopb).max_size = 50];
+}
+
+enum ino_error_e {
+    user_shutdown = 0;
+    heating_too_fast = 1;
+    heating_too_slow = 2;
+    exceeded_max_temp = 3;
+    no_heartbeat_received = 4;
+}
+
+enum ino_commands_e {
+    start_autotune = 0;
+    stop_autotune = 1;
+    shutdown = 2;
+}
+
+enum pla_commands_e {
+    fw_update = 0;
+    set_log_level = 1;
+    get_log_level = 2;
+    read_errors = 3;
+    clear_errors = 4;
+    read_info = 5;
+}
+
+message pla_command {
+    optional pla_commands_e command = 1;
+
+    /*TODO Lee -> can oneof be empty?*/
+    oneof data {
+        error_tags tags = 2;
+        pla_log_lvl_e log_level = 3;
+    }
+}
+
+message ino_command {
+    optional ino_commands_e command = 1;
+    /* TODO Lee - Should we leave some space here before the oneof?*/
+    oneof data {
+        float tuning_temperature = 2;
+    }
+}
+
+message read_setting_request{
+    repeated uint32 tags = 1 [(nanopb).max_count = 20, (nanopb).int_size = IS_8];
+}
+
+/*
+message read_setting_request{
+    repeated uint32 tags = 1;
+}
+*/
+
+/* TODO Lee - Basically a duplication of read_setting_request */
+message error_tags{
+    repeated uint32 tags = 1 [(nanopb).max_count = 10, (nanopb).int_size = IS_8];
+}
+
+message serial_request {
+    //option (nanopb_msgopt).submsg_callback = true;
+
+    oneof requests {
+        read_setting_request read_setting = 1;
+        settings settings = 2;
+        pla_command pla_cmd = 3;
+        ino_command ino_cmd = 4;
+        //read_setting_request_limited read_setting_limited = 5;
+    }
+}
+
+enum response_e {
+    ack = 0;
+    nack = 1;
+    param_error = 2;
+}
+
+message serial_response {
+    optional response_e result = 1;
+
+    oneof responses {
+        settings settings = 2;
+        pla_info info = 3;
+        error_tags errors = 4;
+        log log_msg = 5;
+    }
+}
+
+/* TODO Lee - General response message */

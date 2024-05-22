@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+import "nanopb.proto";
+
+enum pla_log_lvl_e {
+    off = 0;
+    info = 1;
+    debug = 2;
+    error = 3;
+}
+
+message log {
+    optional pla_log_lvl_e log_lvl = 1;
+    optional string message = 2  [(nanopb).max_size = 100];
+}
