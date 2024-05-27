@@ -402,6 +402,27 @@ class PLA_INO_Sensor:
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:
             text_line = self.read_queue.pop(0)
+            if text_line.startswith("Temp"):
+                text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
+                logging.info(text_dict)
+                if "Temp" in text_dict:
+                    self.temp = float(text_dict["Temp"])
+                else:
+                    logging.warning("No temperature transmitted from INO.")
+
+            elif text_line.startswith("debug"):
+                text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
+                logging.info(text_dict)
+                #print message to Mainsail terminal
+                self.gcode.respond_info(text_dict) # output to mainsail console
+
+            else:
+                logging.info(text_line)
+    """
+    def _process_read_queue(self):
+        # Process any decoded lines from the device
+        while not len(self.read_queue) == 0:
+            text_line = self.read_queue.pop(0)
             if text_line.startswith("Tick"):
                 text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
                 logging.info(text_dict)
@@ -411,6 +432,7 @@ class PLA_INO_Sensor:
                     logging.warning("No temperature transmitted from INO.")
             else:
                 logging.info(text_line)
+    """
 
 def load_config(config):
     # Register sensor
