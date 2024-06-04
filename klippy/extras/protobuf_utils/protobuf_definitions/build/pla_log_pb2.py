@@ -12,7 +12,7 @@ from google.protobuf.internal import builder as _builder
 _sym_db = _symbol_database.Default()
 
 
-import nanopb_pb2 as nanopb__pb2
+from . import nanopb_pb2 as nanopb__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rpla_log.proto\x1a\x0cnanopb.proto\"G\n\x0blog_message\x12\x1f\n\x07log_lvl\x18\x01 \x01(\x0e\x32\x0e.pla_log_lvl_e\x12\x17\n\x07message\x18\x02 \x01(\tB\x06\x92?\x03\x08\xff\x01*H\n\rpla_log_lvl_e\x12\x0b\n\x07lvl_off\x10\x00\x12\x0c\n\x08lvl_info\x10\x01\x12\r\n\tlvl_debug\x10\x02\x12\r\n\tlvl_error\x10\x03')
