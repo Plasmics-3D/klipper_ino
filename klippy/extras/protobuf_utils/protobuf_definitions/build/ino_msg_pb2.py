@@ -12,49 +12,65 @@ from google.protobuf.internal import builder as _builder
 _sym_db = _symbol_database.Default()
 
 
-from . import nanopb_pb2 as nanopb__pb2
-from . import pla_log_pb2 as pla__log__pb2
+import nanopb_pb2 as nanopb__pb2
+import pla_log_pb2 as pla__log__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rino_msg.proto\x1a\x0cnanopb.proto\x1a\rpla_log.proto\">\n\x08settings\x12\x0e\n\x06target\x18\x01 \x01(\x02\x12\n\n\x02ki\x18\x02 \x01(\x02\x12\n\n\x02kp\x18\x03 \x01(\x02\x12\n\n\x02kd\x18\x04 \x01(\x02\"U\n\x08pla_info\x12\x19\n\nfw_version\x18\x01 \x01(\tB\x05\x92?\x02\x08\n\x12\x19\n\nhw_version\x18\x02 \x01(\tB\x05\x92?\x02\x08\n\x12\x13\n\x04name\x18\x03 \x01(\tB\x05\x92?\x02\x08\x32\"y\n\x0bpla_command\x12 \n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x0f.pla_commands_e\x12\x1b\n\x04tags\x18\x02 \x01(\x0b\x32\x0b.error_tagsH\x00\x12#\n\tlog_level\x18\x03 \x01(\x0e\x32\x0e.pla_log_lvl_eH\x00\x42\x06\n\x04\x64\x61ta\"U\n\x0bino_command\x12 \n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x0f.ino_commands_e\x12\x1c\n\x12tuning_temperature\x18\x02 \x01(\x02H\x00\x42\x06\n\x04\x64\x61ta\"-\n\x14read_setting_request\x12\x15\n\x04tags\x18\x01 \x03(\rB\x07\x92?\x04\x10\x14\x38\x08\"#\n\nerror_tags\x12\x15\n\x04tags\x18\x01 \x03(\rB\x07\x92?\x04\x10\n8\x08\"\xac\x01\n\x0eserial_request\x12-\n\x0cread_setting\x18\x01 \x01(\x0b\x32\x15.read_setting_requestH\x00\x12\x1d\n\x08settings\x18\x02 \x01(\x0b\x32\t.settingsH\x00\x12\x1f\n\x07pla_cmd\x18\x03 \x01(\x0b\x32\x0c.pla_commandH\x00\x12\x1f\n\x07ino_cmd\x18\x04 \x01(\x0b\x32\x0c.ino_commandH\x00\x42\n\n\x08requests\"\xad\x01\n\x0fserial_response\x12\x1b\n\x06result\x18\x01 \x01(\x0e\x32\x0b.response_e\x12\x1d\n\x08settings\x18\x02 \x01(\x0b\x32\t.settingsH\x00\x12\x19\n\x04info\x18\x03 \x01(\x0b\x32\t.pla_infoH\x00\x12\x1d\n\x06\x65rrors\x18\x04 \x01(\x0b\x32\x0b.error_tagsH\x00\x12\x17\n\x07log_msg\x18\x05 \x01(\x0b\x32\x04.logH\x00\x42\x0b\n\tresponses*~\n\x0bino_error_e\x12\x11\n\ruser_shutdown\x10\x00\x12\x14\n\x10heating_too_fast\x10\x01\x12\x14\n\x10heating_too_slow\x10\x02\x12\x15\n\x11\x65xceeded_max_temp\x10\x03\x12\x19\n\x15no_heartbeat_received\x10\x04*E\n\x0eino_commands_e\x12\x12\n\x0estart_autotune\x10\x00\x12\x11\n\rstop_autotune\x10\x01\x12\x0c\n\x08shutdown\x10\x02*w\n\x0epla_commands_e\x12\r\n\tfw_update\x10\x00\x12\x11\n\rset_log_level\x10\x01\x12\x11\n\rget_log_level\x10\x02\x12\x0f\n\x0bread_errors\x10\x03\x12\x10\n\x0c\x63lear_errors\x10\x04\x12\r\n\tread_info\x10\x05*0\n\nresponse_e\x12\x07\n\x03\x61\x63k\x10\x00\x12\x08\n\x04nack\x10\x01\x12\x0f\n\x0bparam_error\x10\x02')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rino_msg.proto\x1a\x0cnanopb.proto\x1a\rpla_log.proto\"\x9e\x02\n\x13user_serial_request\x12-\n\x0cread_setting\x18\x01 \x01(\x0b\x32\x15.read_setting_requestH\x00\x12\x1f\n\x07pla_cmd\x18\x02 \x01(\x0b\x32\x0c.pla_commandH\x00\x12\x1f\n\x07ino_cmd\x18\x03 \x01(\x0b\x32\x0c.ino_commandH\x00\x12)\n\x0cset_settings\x18\x04 \x01(\x0b\x32\x11.set_ino_settingsH\x00\x12*\n\rset_su_values\x18\x05 \x01(\x0b\x32\x11.set_ino_su_valueH\x00\x12\x33\n\x0fread_su_setting\x18\x06 \x01(\x0b\x32\x18.read_su_setting_requestH\x00\x42\n\n\x08requests\"N\n\x10set_ino_settings\x12\x1a\n\x12target_temperature\x18\x01 \x01(\x02\x12\x1e\n\x16pid_target_temperature\x18\x02 \x01(\x02\"M\n\x10set_ino_su_value\x12\n\n\x02kp\x18\x01 \x01(\x02\x12\n\n\x02ki\x18\x02 \x01(\x02\x12\n\n\x02kd\x18\x03 \x01(\x02\x12\x15\n\x06max_dc\x18\x04 \x01(\rB\x05\x92?\x02\x38\x10\"/\n\x0bino_command\x12 \n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x0f.ino_commands_e\"8\n\x11ino_debug_command\x12#\n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x12.ino_commands_su_e\"y\n\x0bpla_command\x12 \n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x0f.pla_commands_e\x12\x1b\n\x04tags\x18\x02 \x01(\x0b\x32\x0b.error_tagsH\x00\x12#\n\tlog_level\x18\x03 \x01(\x0e\x32\x0e.pla_log_lvl_eH\x00\x42\x06\n\x04\x64\x61ta\"\xa2\x02\n\x13ino_serial_response\x12\x1b\n\x06result\x18\x01 \x01(\x0e\x32\x0b.response_e\x12)\n\x0cino_settings\x18\x02 \x01(\x0b\x32\x11.set_ino_settingsH\x00\x12,\n\x0fino_su_settings\x18\x03 \x01(\x0b\x32\x11.set_ino_su_valueH\x00\x12\x31\n\x10ino_standard_msg\x18\x04 \x01(\x0b\x32\x15.ino_standard_messageH\x00\x12\x34\n\x0fino_general_msg\x18\x05 \x01(\x0b\x32\x19.general_message_from_inoH\x00\x12\x1f\n\x07log_msg\x18\x06 \x01(\x0b\x32\x0c.log_messageH\x00\x42\x0b\n\tresponses\"\x9b\x01\n\x14ino_standard_message\x12\x0c\n\x04temp\x18\x01 \x01(\x02\x12\x13\n\x0btemp_target\x18\x02 \x01(\x02\x12 \n\nerror_code\x18\x03 \x01(\x0e\x32\x0c.ino_error_e\x12\x1d\n\x06status\x18\x04 \x01(\x0e\x32\r.ino_status_e\x12\x11\n\x02\x44\x43\x18\x05 \x01(\rB\x05\x92?\x02\x38\x10\x12\x0c\n\x04tick\x18\x06 \x01(\r\"\x81\x01\n\x18general_message_from_ino\x12\n\n\x02kp\x18\x01 \x01(\x02\x12\n\n\x02ki\x18\x02 \x01(\x02\x12\n\n\x02kd\x18\x03 \x01(\x02\x12 \n\x11pid_tune_finished\x18\x04 \x01(\rB\x05\x92?\x02\x38\x08\x12\x1f\n\x0fgeneral_message\x18\x05 \x01(\tB\x06\x92?\x03\x08\xff\x01\"-\n\x14read_setting_request\x12\x15\n\x04tags\x18\x01 \x03(\rB\x07\x92?\x04\x10\x14\x38\x08\"0\n\x17read_su_setting_request\x12\x15\n\x04tags\x18\x01 \x03(\rB\x07\x92?\x04\x10\x14\x38\x08\"#\n\nerror_tags\x12\x15\n\x04tags\x18\x01 \x03(\rB\x07\x92?\x04\x10\n8\x08*N\n\x11ino_commands_su_e\x12\x1a\n\x16\x64isable_heartbeat_need\x10\x00\x12\x1d\n\x19\x64isable_shutdown_on_error\x10\x01*\x1e\n\x0eino_commands_e\x12\x0c\n\x08shutdown\x10\x00*\xa8\x01\n\x0epla_commands_e\x12\x16\n\x12set_fw_update_mode\x10\x00\x12\x11\n\rset_log_level\x10\x01\x12\x11\n\rget_log_level\x10\x02\x12\x0f\n\x0bread_errors\x10\x03\x12\x10\n\x0c\x63lear_errors\x10\x04\x12\r\n\tread_info\x10\x05\x12\x12\n\x0eget_fw_version\x10\x06\x12\x12\n\x0eget_hw_version\x10\x07*0\n\nresponse_e\x12\x07\n\x03\x61\x63k\x10\x00\x12\x08\n\x04nack\x10\x01\x12\x0f\n\x0bparam_error\x10\x02*\xc5\x01\n\x0bino_error_e\x12\x11\n\ruser_shutdown\x10\x00\x12\x14\n\x10heating_too_fast\x10\x01\x12\x14\n\x10heating_too_slow\x10\x02\x12\x15\n\x11\x65xceeded_max_temp\x10\x03\x12\x19\n\x15no_heartbeat_received\x10\x04\x12\x18\n\x14temperature_unstable\x10\x05\x12\x1d\n\x19thermocouple_disconnected\x10\x06\x12\x0c\n\x08no_error\x10\x07*C\n\x0cino_status_e\x12\x0b\n\x07standby\x10\x00\x12\x0b\n\x07heating\x10\x01\x12\x0e\n\npid_tuning\x10\x02\x12\t\n\x05\x65rror\x10\x03')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ino_msg_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_PLA_INFO'].fields_by_name['fw_version']._options = None
-  _globals['_PLA_INFO'].fields_by_name['fw_version']._serialized_options = b'\222?\002\010\n'
-  _globals['_PLA_INFO'].fields_by_name['hw_version']._options = None
-  _globals['_PLA_INFO'].fields_by_name['hw_version']._serialized_options = b'\222?\002\010\n'
-  _globals['_PLA_INFO'].fields_by_name['name']._options = None
-  _globals['_PLA_INFO'].fields_by_name['name']._serialized_options = b'\222?\002\0102'
+  _globals['_SET_INO_SU_VALUE'].fields_by_name['max_dc']._options = None
+  _globals['_SET_INO_SU_VALUE'].fields_by_name['max_dc']._serialized_options = b'\222?\0028\020'
+  _globals['_INO_STANDARD_MESSAGE'].fields_by_name['DC']._options = None
+  _globals['_INO_STANDARD_MESSAGE'].fields_by_name['DC']._serialized_options = b'\222?\0028\020'
+  _globals['_GENERAL_MESSAGE_FROM_INO'].fields_by_name['pid_tune_finished']._options = None
+  _globals['_GENERAL_MESSAGE_FROM_INO'].fields_by_name['pid_tune_finished']._serialized_options = b'\222?\0028\010'
+  _globals['_GENERAL_MESSAGE_FROM_INO'].fields_by_name['general_message']._options = None
+  _globals['_GENERAL_MESSAGE_FROM_INO'].fields_by_name['general_message']._serialized_options = b'\222?\003\010\377\001'
   _globals['_READ_SETTING_REQUEST'].fields_by_name['tags']._options = None
   _globals['_READ_SETTING_REQUEST'].fields_by_name['tags']._serialized_options = b'\222?\004\020\0248\010'
+  _globals['_READ_SU_SETTING_REQUEST'].fields_by_name['tags']._options = None
+  _globals['_READ_SU_SETTING_REQUEST'].fields_by_name['tags']._serialized_options = b'\222?\004\020\0248\010'
   _globals['_ERROR_TAGS'].fields_by_name['tags']._options = None
   _globals['_ERROR_TAGS'].fields_by_name['tags']._serialized_options = b'\222?\004\020\n8\010'
-  _globals['_INO_ERROR_E']._serialized_start=842
-  _globals['_INO_ERROR_E']._serialized_end=968
-  _globals['_INO_COMMANDS_E']._serialized_start=970
-  _globals['_INO_COMMANDS_E']._serialized_end=1039
-  _globals['_PLA_COMMANDS_E']._serialized_start=1041
-  _globals['_PLA_COMMANDS_E']._serialized_end=1160
-  _globals['_RESPONSE_E']._serialized_start=1162
-  _globals['_RESPONSE_E']._serialized_end=1210
-  _globals['_SETTINGS']._serialized_start=46
-  _globals['_SETTINGS']._serialized_end=108
-  _globals['_PLA_INFO']._serialized_start=110
-  _globals['_PLA_INFO']._serialized_end=195
-  _globals['_PLA_COMMAND']._serialized_start=197
-  _globals['_PLA_COMMAND']._serialized_end=318
-  _globals['_INO_COMMAND']._serialized_start=320
-  _globals['_INO_COMMAND']._serialized_end=405
-  _globals['_READ_SETTING_REQUEST']._serialized_start=407
-  _globals['_READ_SETTING_REQUEST']._serialized_end=452
-  _globals['_ERROR_TAGS']._serialized_start=454
-  _globals['_ERROR_TAGS']._serialized_end=489
-  _globals['_SERIAL_REQUEST']._serialized_start=492
-  _globals['_SERIAL_REQUEST']._serialized_end=664
-  _globals['_SERIAL_RESPONSE']._serialized_start=667
-  _globals['_SERIAL_RESPONSE']._serialized_end=840
+  _globals['_INO_COMMANDS_SU_E']._serialized_start=1441
+  _globals['_INO_COMMANDS_SU_E']._serialized_end=1519
+  _globals['_INO_COMMANDS_E']._serialized_start=1521
+  _globals['_INO_COMMANDS_E']._serialized_end=1551
+  _globals['_PLA_COMMANDS_E']._serialized_start=1554
+  _globals['_PLA_COMMANDS_E']._serialized_end=1722
+  _globals['_RESPONSE_E']._serialized_start=1724
+  _globals['_RESPONSE_E']._serialized_end=1772
+  _globals['_INO_ERROR_E']._serialized_start=1775
+  _globals['_INO_ERROR_E']._serialized_end=1972
+  _globals['_INO_STATUS_E']._serialized_start=1974
+  _globals['_INO_STATUS_E']._serialized_end=2041
+  _globals['_USER_SERIAL_REQUEST']._serialized_start=47
+  _globals['_USER_SERIAL_REQUEST']._serialized_end=333
+  _globals['_SET_INO_SETTINGS']._serialized_start=335
+  _globals['_SET_INO_SETTINGS']._serialized_end=413
+  _globals['_SET_INO_SU_VALUE']._serialized_start=415
+  _globals['_SET_INO_SU_VALUE']._serialized_end=492
+  _globals['_INO_COMMAND']._serialized_start=494
+  _globals['_INO_COMMAND']._serialized_end=541
+  _globals['_INO_DEBUG_COMMAND']._serialized_start=543
+  _globals['_INO_DEBUG_COMMAND']._serialized_end=599
+  _globals['_PLA_COMMAND']._serialized_start=601
+  _globals['_PLA_COMMAND']._serialized_end=722
+  _globals['_INO_SERIAL_RESPONSE']._serialized_start=725
+  _globals['_INO_SERIAL_RESPONSE']._serialized_end=1015
+  _globals['_INO_STANDARD_MESSAGE']._serialized_start=1018
+  _globals['_INO_STANDARD_MESSAGE']._serialized_end=1173
+  _globals['_GENERAL_MESSAGE_FROM_INO']._serialized_start=1176
+  _globals['_GENERAL_MESSAGE_FROM_INO']._serialized_end=1305
+  _globals['_READ_SETTING_REQUEST']._serialized_start=1307
+  _globals['_READ_SETTING_REQUEST']._serialized_end=1352
+  _globals['_READ_SU_SETTING_REQUEST']._serialized_start=1354
+  _globals['_READ_SU_SETTING_REQUEST']._serialized_end=1402
+  _globals['_ERROR_TAGS']._serialized_start=1404
+  _globals['_ERROR_TAGS']._serialized_end=1439
 # @@protoc_insertion_point(module_scope)
