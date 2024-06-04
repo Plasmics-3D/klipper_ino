@@ -287,16 +287,37 @@ class PLA_INO_Sensor:
             if checksum != calculated_checksum:
                 logging.warning(f"checksum failed: packet: {checksum}, calculated: {calculated_checksum}")
                 continue
+            
+
+            #try:
+            #    # Deserialize the protobuf data in to an object.
+            #    response = ino_msg_pb2.serial_response()
+            #    logging.info(f"output {output}")
+            #    response.ParseFromString(bytes(output[1:-1]))
+            #except:
+            #    logging.warning("failed to decode")
+            #else:
+            #    message_content = response.log_msg.message
+            #    self.read_queue.append(message_content)
+            #    break
+
             try:
                 # Deserialize the protobuf data in to an object.
-                response = ino_msg_pb2.serial_response()
-                logging.info(f"output {output}")
+                response = ino_msg_pb2.ino_serial_response()
+                #logging.info(f"output {output}")            
                 response.ParseFromString(bytes(output[1:-1]))
             except:
-                logging.warning("failed to decode")
+                print("failed to decode")
             else:
                 message_content = response.log_msg.message
-                self.read_queue.append(message_content)
+                #self.read_queue.append(message_content)
+                #break
+
+            if response.WhichOneof('responses') == 'ino_standard_msg':
+                
+                #print to mainsail console for testing
+                self.gcode.respond_info(f"tick:{response.ino_standard_msg.tick}, temperature:{response.ino_standard_msg.temp}, target_temp:{response.ino_standard_msg.temp_target}, error_code:{response.ino_standard_msg.temp_target}, status:{response.ino_standard_msg.status}, DC:{response.ino_standard_msg.DC}")
+                self.temp = response.ino_standard_msg.temp
                 break
 
         # logging.info(f"J: Read queue contents: {self.read_queue}")
@@ -327,19 +348,20 @@ class PLA_INO_Sensor:
         # logging.info("J: Write queue is empty.")
         return eventtime + SERIAL_TIMER
 
-    cmd_INO_PID_TUNE_help = ""
+    cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
 
+    #TODO write code correctly for new implementation
     def cmd_INO_PID_TUNE(self, gcmd):
         """custom gcode command for tuning the PID
 
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-        request = ino_msg_pb2.serial_request()
-        request.ino_cmd.command = ino_msg_pb2.start_autotune
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        self.sequence += 1
-        self.write_queue.append(serial_data)
+    #    request = ino_msg_pb2.serial_request()
+    #    request.ino_cmd.command = ino_msg_pb2.start_autotune
+    #    serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+    #    self.sequence += 1
+    #    self.write_queue.append(serial_data)
 
     cmd_INO_SET_PID_VALUES_help = ""
 
@@ -359,16 +381,18 @@ class PLA_INO_Sensor:
         message = self._create_PID_message(ki,kp,kd)
         self.write_queue.append(message)
     
+    #TODO write code correctly for new implementation
     def _create_PID_message(self, ki, kp, kd):
-        request = ino_msg_pb2.serial_request()
-        self.target_temp = 0
-        request.settings.target = self.target_temp
-        request.settings.ki = ki
-        request.settings.kp = kp
-        request.settings.kd = kd
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        self.sequence += 1
-        return serial_data
+        pass
+    #    request = ino_msg_pb2.serial_request()
+    #    self.target_temp = 0
+    #    request.settings.target = self.target_temp
+    #    request.settings.ki = ki
+    #    request.settings.kp = kp
+    #    request.settings.kd = kd
+    #    serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+    #    self.sequence += 1
+    #    return serial_data
 
     cmd_INO_FREQUENCY_help = "Command INO_FREQUENCY is deprecated!"
 
@@ -401,7 +425,15 @@ class PLA_INO_Sensor:
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:
+            if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':
+                pass
+                #print to mainsail console for testing
+                self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}, temperature:{self.read_queue[0].ino_standard_msg.temp}, target_temp:{self.read_queue[0].ino_standard_msg.temp_target}, error_code:{self.read_queue[0].ino_standard_msg.temp_target}, status:{self.read_queue[0].ino_standard_msg.status}, DC:{self.read_queue[0].ino_standard_msg.DC}")
+
+
+            """
             text_line = self.read_queue.pop(0)
+            
             if text_line.startswith("Temp"):
                 text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
                 logging.info(text_dict)
@@ -418,6 +450,9 @@ class PLA_INO_Sensor:
 
             else:
                 logging.info(text_line)
+                #self.gcode.respond_info(text_line) # output to mainsail console
+            """
+
     """
     def _process_read_queue(self):
         # Process any decoded lines from the device
