@@ -309,17 +309,16 @@ class PLA_INO_Sensor:
             except:
                 print("failed to decode")
             else:
-                message_content = response.log_msg.message
-                #self.read_queue.append(message_content)
-                #break
-
+                self.read_queue.append(response)
+                break
+            """
             if response.WhichOneof('responses') == 'ino_standard_msg':
                 
                 #print to mainsail console for testing
                 self.gcode.respond_info(f"tick:{response.ino_standard_msg.tick}, temperature:{response.ino_standard_msg.temp}, target_temp:{response.ino_standard_msg.temp_target}, error_code:{response.ino_standard_msg.temp_target}, status:{response.ino_standard_msg.status}, DC:{response.ino_standard_msg.DC}")
                 self.temp = response.ino_standard_msg.temp
                 break
-
+            """
         # logging.info(f"J: Read queue contents: {self.read_queue}")
 
         self.last_debug_timestamp = self.reactor.monotonic()
@@ -426,9 +425,17 @@ class PLA_INO_Sensor:
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:
             if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':
-                pass
-                #print to mainsail console for testing
-                self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}, temperature:{self.read_queue[0].ino_standard_msg.temp}, target_temp:{self.read_queue[0].ino_standard_msg.temp_target}, error_code:{self.read_queue[0].ino_standard_msg.temp_target}, status:{self.read_queue[0].ino_standard_msg.status}, DC:{self.read_queue[0].ino_standard_msg.DC}")
+                self.temp = self.read_queue[0].ino_standard_msg.temp
+
+                #print to mainsail console for testing                
+                #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}")
+                #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}, temperature:{self.read_queue[0].ino_standard_msg.temp}, target_temp:{self.read_queue[0].ino_standard_msg.temp_target}, error_code:{self.read_queue[0].ino_standard_msg.temp_target}, status:{self.read_queue[0].ino_standard_msg.status}, DC:{self.read_queue[0].ino_standard_msg.DC}")
+                
+
+                self.read_queue = self.read_queue[1:]
+
+            pass
+
 
 
             """
