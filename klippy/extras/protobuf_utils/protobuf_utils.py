@@ -115,7 +115,7 @@ def create_request(request, sequence,flag):
     serial_request = bytes([sequence]) + serial_request
     sequence = (sequence + 1) & 0xFF
 
-    # Calcualte checksum and add it to the end
+    # Calculate checksum and add it to the end
     checksum = calculate_checksum(serial_request)
     serial_request = serial_request + bytes([checksum])
 

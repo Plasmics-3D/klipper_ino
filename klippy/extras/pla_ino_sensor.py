@@ -356,11 +356,19 @@ class PLA_INO_Sensor:
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-    #    request = ino_msg_pb2.serial_request()
-    #    request.ino_cmd.command = ino_msg_pb2.start_autotune
-    #    serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-    #    self.sequence += 1
-    #    self.write_queue.append(serial_data)
+        #request = ino_msg_pb2.serial_request()
+        #request.ino_cmd.command = ino_msg_pb2.start_autotune
+        #serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        #self.sequence += 1
+        #self.write_queue.append(serial_data)
+        variable = gcmd.get_float('PID', 0.)
+
+        request = ino_msg_pb2.user_serial_request()
+        request.set_settings.pid_target_temperature = variable
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
+
 
     cmd_INO_SET_PID_VALUES_help = ""
 
