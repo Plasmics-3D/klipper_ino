@@ -1,6 +1,7 @@
 # Control of INO hotend
 #
 # Copyright (C) 2023  Johannes Zischg <johannes.zischg@plasmics.com>
+# changes Marcus Roth
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
@@ -370,6 +371,7 @@ class PLA_INO_Sensor:
         self.write_queue.append(serial_data)
 
 
+
     cmd_INO_SET_PID_VALUES_help = ""
 
     def cmd_INO_SET_PID_VALUES(self, gcmd):
@@ -435,15 +437,41 @@ class PLA_INO_Sensor:
             if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':
                 self.temp = self.read_queue[0].ino_standard_msg.temp
 
-                #print to mainsail console for testing                
+                #print to mainsail console for testing  
                 #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}")
                 #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}, temperature:{self.read_queue[0].ino_standard_msg.temp}, target_temp:{self.read_queue[0].ino_standard_msg.temp_target}, error_code:{self.read_queue[0].ino_standard_msg.temp_target}, status:{self.read_queue[0].ino_standard_msg.status}, DC:{self.read_queue[0].ino_standard_msg.DC}")
                 
+                """
+            elif self.read_queue[0].WhichOneof('responses') == 'ino_settings':
+                #ino_target_temperature = self.read_queue[0].ino_settings.target_temperature
+                #ino_pid_target_temperature = self.read_queue[0].ino_settings.pid_target_temperature
 
-                self.read_queue = self.read_queue[1:]
+                self.gcode.respond_info(f"ino_target_temperature:{self.read_queue[0].ino_settings.target_temperature}, ino_pid_target_temperature:{self.read_queue[0].ino_settings.pid_target_temperature}")
 
-            pass
+            elif self.read_queue[0].WhichOneof('responses') == 'ino_su_settings':
+                #stuff
+                pass
+                """
 
+            elif self.read_queue[0].WhichOneof('responses') == 'ino_general_msg':
+                if self.read_queue[0].ino_settings.HasField('kp'):  #check if kp is contained, only triplets of kp ki kd wil be sent
+                    self.gcode.respond_info(f"Kp:{self.read_queue[0].ino_general_msg.kp}, Ki:{self.read_queue[0].ino_general_msg.ki}, Kd:{self.read_queue[0].ino_general_msg.kd}")
+
+                if self.read_queue[0].ino_settings.HasField('pid_tune_finished'):  
+                    self.gcode.respond_info(f"pid tune finished")
+                
+                if self.read_queue[0].ino_settings.HasField('general_message'): 
+                    self.gcode.respond_info(f"general_message:{self.read_queue[0].ino_general_msg.general_message}")
+
+                
+            elif self.read_queue[0].WhichOneof('responses') == 'log_msg':
+                self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
+
+                
+
+            self.read_queue = self.read_queue[1:]   #delete first element of que
+
+           
 
 
             """
