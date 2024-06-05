@@ -125,9 +125,11 @@ def create_request(request, sequence,flag):
 
 
 def create_heating_request(target, sequence,flag):
-    # Create an object for the message data and populate the neccessary fields.
-    request = ino_msg_pb2.serial_request()
-    request.settings.target = target
+    # Create an object for the message data and populate the necessary fields.
+    #request = ino_msg_pb2.serial_request()
+    #request.settings.target = target
+    request = ino_msg_pb2.user_serial_request()
+    request.set_settings.target_temperature = target
 
     # Call the function to serialize and frame the data.
     serial_data = create_request(request, sequence,flag)

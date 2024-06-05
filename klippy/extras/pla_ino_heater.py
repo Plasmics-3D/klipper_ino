@@ -106,7 +106,7 @@ class PLA_INO_Heater:
     def get_smooth_time(self):
         return self.smooth_time
 
-    def set_temp(self, degrees):
+    def set_temp(self, degrees):    #TODO MR 05.06.2024 change degrees to temperature or similar name.  
         """Function used to set the temperature.
         In contrast to the normal heater, this command will write to the serial connection
         opened by the respective INO Sensor.
