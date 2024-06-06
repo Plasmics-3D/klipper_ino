@@ -389,10 +389,12 @@ class PLA_INO_Sensor:
         kd = gcmd.get_float("Kd", 0.0)
         message = self._create_PID_message(ki,kp,kd)
         self.write_queue.append(message)
-    
+        
+
+
+
     #TODO write code correctly for new implementation
     def _create_PID_message(self, ki, kp, kd):
-        pass
     #    request = ino_msg_pb2.serial_request()
     #    self.target_temp = 0
     #    request.settings.target = self.target_temp
@@ -403,8 +405,19 @@ class PLA_INO_Sensor:
     #    self.sequence += 1
     #    return serial_data
 
-    cmd_INO_FREQUENCY_help = "Command INO_FREQUENCY is deprecated!"
+        request = ino_msg_pb2.user_serial_request()
+       
+        request.set_su_values.kp = kp
+        request.set_su_values.ki = ki
+        request.set_su_values.kd = kd
 
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
+
+
+
+    cmd_INO_FREQUENCY_help = "Command INO_FREQUENCY is deprecated!"
     # dead
     def cmd_INO_FREQUENCY(self, gcmd):
         logging.warning("Command INO_FREQUENCY is deprecated!")
@@ -433,9 +446,9 @@ class PLA_INO_Sensor:
 
     def _process_read_queue(self):
         # Process any decoded lines from the device
-        while not len(self.read_queue) == 0:
-            if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':
-                self.temp = self.read_queue[0].ino_standard_msg.temp
+        while not len(self.read_queue) == 0:   
+            if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
+                self.temp = self.read_queue[0].ino_standard_msg.temp                # 
 
                 #print to mainsail console for testing  
                 #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}")
@@ -463,11 +476,10 @@ class PLA_INO_Sensor:
                 if self.read_queue[0].ino_settings.HasField('general_message'): 
                     self.gcode.respond_info(f"general_message:{self.read_queue[0].ino_general_msg.general_message}")
 
-                
+
             elif self.read_queue[0].WhichOneof('responses') == 'log_msg':
                 self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
 
-                
 
             self.read_queue = self.read_queue[1:]   #delete first element of que
 
