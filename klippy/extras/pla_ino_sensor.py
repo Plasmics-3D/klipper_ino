@@ -65,14 +65,9 @@ class PLA_INO_Sensor:
         self.sequence = 0
 
         # add the gcode commands
-        if "INO_FREQUENCY" in self.gcode.ready_gcode_handlers.keys():
+        if "INO_FREQUENCY" in self.gcode.ready_gcode_handlers.keys():   #MR TODO is the frequency if needed? frequency is never set
             logging.info("J: INO Frequency already defined!")
         else:
-            self.gcode.register_command(
-                "INO_FREQUENCY",
-                self.cmd_INO_FREQUENCY,
-                desc=self.cmd_INO_FREQUENCY_help,
-            )
             self.gcode.register_command(
                 "INO_PID_TUNE", self.cmd_INO_PID_TUNE, desc=self.cmd_INO_PID_TUNE_help
             )
@@ -423,13 +418,7 @@ class PLA_INO_Sensor:
 
 
 
-    cmd_INO_FREQUENCY_help = "Command INO_FREQUENCY is deprecated!"
-    # dead
-    def cmd_INO_FREQUENCY(self, gcmd):
-        logging.warning("Command INO_FREQUENCY is deprecated!")
-
-
-    cmd_INO_RESET_ERROR_FLAGS_help = "reset error flags in INO board"
+    cmd_INO_RESET_ERROR_FLAGS_help = "resets INO board error flags"
     def cmd_INO_RESET_ERROR_FLAGS(self, gcmd):
         request = ino_msg_pb2.user_serial_request()
         request.pla_cmd.command = ino_msg_pb2.clear_errors
@@ -446,14 +435,14 @@ class PLA_INO_Sensor:
         logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
 
-    cmd_INO_READ_PID_VALUES_help = "reads current PID values saved in INO board"
+    cmd_INO_READ_PID_VALUES_help = "returns current ino board PID values"
     
     def cmd_INO_READ_PID_VALUES(self, gcmd):
-        logging.info("reads current PID values saved in INO")
+        logging.info("returns current ino board PID values")
 
 
 
-    cmd_INO_FIRMWARE_VERSION_help = "returns the firmware version of the INO board"
+    cmd_INO_FIRMWARE_VERSION_help = "returns firmware version of INO board"
     def cmd_INO_FIRMWARE_VERSION(self, gcmd):
         request = ino_msg_pb2.user_serial_request()
         request.pla_cmd.command = ino_msg_pb2.get_fw_version
@@ -464,7 +453,7 @@ class PLA_INO_Sensor:
 
 
 
-    cmd_INO_ERROR_OUTPUT_help = "returns the error and error code of the INO board"
+    cmd_INO_ERROR_OUTPUT_help = "returns curet error code of INO board"
     def cmd_INO_ERROR_OUTPUT(self, gcmd):
         request = ino_msg_pb2.user_serial_request()
         request.pla_cmd.command = ino_msg_pb2.read_errors
