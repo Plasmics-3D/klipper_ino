@@ -389,7 +389,7 @@ class PLA_INO_Sensor:
         kd = gcmd.get_float("Kd", 0.0)
         message = self._create_PID_message(ki,kp,kd)
         self.write_queue.append(message)
-        
+
 
 
 
@@ -422,10 +422,16 @@ class PLA_INO_Sensor:
     def cmd_INO_FREQUENCY(self, gcmd):
         logging.warning("Command INO_FREQUENCY is deprecated!")
 
-    cmd_INO_RESET_ERROR_FLAGS_help = "Command INO_RESET_ERROR_FLAGS is deprecated!"
 
-    # dead
+    cmd_INO_RESET_ERROR_FLAGS_help = "reset error flags in INO board"
     def cmd_INO_RESET_ERROR_FLAGS(self, gcmd):
+        request = ino_msg_pb2.user_serial_request()
+        request.pla_cmd.command = ino_msg_pb2.clear_errors
+
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
+
         logging.warning("Command INO_RESET_ERROR_FLAGS is deprecated!")
 
     cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
@@ -434,15 +440,22 @@ class PLA_INO_Sensor:
     def cmd_INO_DEBUG_OUT(self, gcmd):
         logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
-    cmd_INO_READ_PID_VALUES_help = "Command INO_READ_PID_VALUES is deprecated!"
-    # dead
-    def cmd_INO_READ_PID_VALUES(self, gcmd):
-        logging.info("Command INO_READ_PID_VALUES is deprecated!")
 
-    cmd_INO_FIRMWARE_VERSION_help = "Command INO_FIRMWARE_VERSION is deprecated!"
-    # dead for now
+    cmd_INO_READ_PID_VALUES_help = "reads current PID values saved in INO board"
+    
+    def cmd_INO_READ_PID_VALUES(self, gcmd):
+        logging.info("reads current PID values saved in INO")
+
+
+
+    cmd_INO_FIRMWARE_VERSION_help = "returns the firmware version of the INO board"
     def cmd_INO_FIRMWARE_VERSION(self, gcmd):
+        request = ino_msg_pb2.user_serial_request()
+
+
         logging.info("Command INO_FIRMWARE_VERSION is deprecated!")
+
+
 
     def _process_read_queue(self):
         # Process any decoded lines from the device
@@ -481,7 +494,7 @@ class PLA_INO_Sensor:
                 self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
 
 
-            self.read_queue = self.read_queue[1:]   #delete first element of que
+            self.read_queue = self.read_queue[1:]   #delete first element of que //TODO do i need this?
 
            
 
