@@ -406,13 +406,13 @@ class PLA_INO_Sensor:
     #    self.sequence += 1
     #    return serial_data
 
-        request = ino_msg_pb2.user_serial_request()
+        response = ino_msg_pb2.ino_serial_response()
        
-        request.set_su_values.kp = kp
-        request.set_su_values.ki = ki
-        request.set_su_values.kd = kd
+        response.set_su_values.kp = kp
+        response.set_su_values.ki = ki
+        response.set_su_values.kd = kd
 
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        serial_data = protobuf_utils.create_request(response, self.sequence,self.flag)
         self.sequence += 1
         self.write_queue.append(serial_data)
 
@@ -429,17 +429,19 @@ class PLA_INO_Sensor:
 
 
     cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
-
     # dead
     def cmd_INO_DEBUG_OUT(self, gcmd):
         logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
 
     cmd_INO_READ_PID_VALUES_help = "returns current ino board PID values"
-    
     def cmd_INO_READ_PID_VALUES(self, gcmd):
-        logging.info("returns current ino board PID values")
+        request = ino_msg_pb2.user_serial_request()
+        request.pla_cmd.command = ino_msg_pb2.read_info #MR TODO: change read_info to better name, but needs to be implemented in Protobuf
 
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
 
 
     cmd_INO_FIRMWARE_VERSION_help = "returns firmware version of INO board"
@@ -453,7 +455,7 @@ class PLA_INO_Sensor:
 
 
 
-    cmd_INO_ERROR_OUTPUT_help = "returns curet error code of INO board"
+    cmd_INO_ERROR_OUTPUT_help = "returns current error code of INO board"
     def cmd_INO_ERROR_OUTPUT(self, gcmd):
         request = ino_msg_pb2.user_serial_request()
         request.pla_cmd.command = ino_msg_pb2.read_errors
@@ -498,7 +500,8 @@ class PLA_INO_Sensor:
 
 
             elif self.read_queue[0].WhichOneof('responses') == 'log_msg':
-                self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
+                #self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
+                self.gcode.respond_info(f"ino_message: {self.read_queue[0].log_msg.message}")
 
 
             self.read_queue = self.read_queue[1:]   #delete first element of que //TODO do i need this?
