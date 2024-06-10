@@ -101,6 +101,13 @@ class PLA_INO_Sensor:
                 self.cmd_INO_FIRMWARE_VERSION,
                 desc=self.cmd_INO_FIRMWARE_VERSION_help,
             )
+            self.gcode.register_command(
+                "INO_ERROR_OUTPUT",
+                self.cmd_INO_ERROR_OUTPUT,
+                desc=self.cmd_INO_ERROR_OUTPUT_help,
+            )
+
+
             logging.info(f"J: All Gcode commands added.")
 
     def make_heater_known(self, heater, config):
@@ -348,9 +355,8 @@ class PLA_INO_Sensor:
         # logging.info("J: Write queue is empty.")
         return eventtime + SERIAL_TIMER
 
-    cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
 
-    #TODO write code correctly for new implementation
+    cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
     def cmd_INO_PID_TUNE(self, gcmd):
         """custom gcode command for tuning the PID
 
@@ -432,7 +438,6 @@ class PLA_INO_Sensor:
         self.sequence += 1
         self.write_queue.append(serial_data)
 
-        logging.warning("Command INO_RESET_ERROR_FLAGS is deprecated!")
 
     cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
 
@@ -451,9 +456,22 @@ class PLA_INO_Sensor:
     cmd_INO_FIRMWARE_VERSION_help = "returns the firmware version of the INO board"
     def cmd_INO_FIRMWARE_VERSION(self, gcmd):
         request = ino_msg_pb2.user_serial_request()
+        request.pla_cmd.command = ino_msg_pb2.get_fw_version
+
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
 
 
-        logging.info("Command INO_FIRMWARE_VERSION is deprecated!")
+
+    cmd_INO_ERROR_OUTPUT_help = "returns the error and error code of the INO board"
+    def cmd_INO_ERROR_OUTPUT(self, gcmd):
+        request = ino_msg_pb2.user_serial_request()
+        request.pla_cmd.command = ino_msg_pb2.read_errors
+
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        self.write_queue.append(serial_data)
 
 
 
