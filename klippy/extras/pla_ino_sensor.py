@@ -101,7 +101,12 @@ class PLA_INO_Sensor:
                 self.cmd_INO_ERROR_OUTPUT,
                 desc=self.cmd_INO_ERROR_OUTPUT_help,
             )
-
+            self.gcode.register_command(    #MR TODO: remove this function, its only to test to send PID values to the INO board
+                "INO_TEST_PID_SETTING",
+                self.cmd_INO_TEST_PID_SETTING,
+                desc=self.cmd_INO_TEST_PID_SETTING_help,
+            )
+            
 
             logging.info(f"J: All Gcode commands added.")
 
@@ -163,17 +168,13 @@ class PLA_INO_Sensor:
         try:
             self.reactor.unregister_timer(self.read_timer)
         except:
-            logging.info(
-                "J: Reactor read timer already unregistered before disconnection."
-            )
+            logging.info( "J: Reactor read timer already unregistered before disconnection." )
         self.read_timer = None
 
         try:
             self.reactor.unregister_timer(self.write_timer)
         except:
-            logging.info(
-                "J: Reactor write timer already unregistered before disconnection."
-            )
+            logging.info("J: Reactor write timer already unregistered before disconnection.")
         self.write_timer = None
 
         logging.info("J: Ino heater shut down complete.")
@@ -233,11 +234,11 @@ class PLA_INO_Sensor:
 
     def _init_PLA_INO(self):
         """Initializes the INO by starting a serial connection to the ino board
-        and sending the pid control parameters
+        and sending pid control parameters to the ino board
         """
         try:
             self.serial = serial.Serial(self.serial_port, 115200, timeout=60)
-            logging.info("Connection to Ino successfull.")
+            logging.info("Connection to Ino successful.")
             self._failed_connection_attempts = 0
         except Exception as e:
             logging.error(
@@ -351,18 +352,34 @@ class PLA_INO_Sensor:
         return eventtime + SERIAL_TIMER
 
 
+    def _get_extruder_for_commands(self, index, gcmd):
+        """lookup of the extruder the heater and sensor belong to
+
+        :param index: extruder number
+        :type index: int
+        :param gcmd: gcode command (object) that is processed
+        :type gcmd: ?
+        """
+        if index is not None:
+            section = "extruder"
+            if index:
+                section = "extruder%d" % (index,)
+            extruder = self.printer.lookup_object(section, None)
+            if extruder is None:
+                raise gcmd.error("Extruder not configured.")
+        else:
+            extruder = self.printer.lookup_object("toolhead").get_extruder()
+        return extruder
+
+
     cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
     def cmd_INO_PID_TUNE(self, gcmd):
-        """custom gcode command for tuning the PID
+        """custom gcode command for tuning the PID parameters of the ino board
 
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-        #request = ino_msg_pb2.serial_request()
-        #request.ino_cmd.command = ino_msg_pb2.start_autotune
-        #serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        #self.sequence += 1
-        #self.write_queue.append(serial_data)
+
         variable = gcmd.get_float('PID', 0.)
 
         request = ino_msg_pb2.user_serial_request()
@@ -372,9 +389,8 @@ class PLA_INO_Sensor:
         self.write_queue.append(serial_data)
 
 
-
-    cmd_INO_SET_PID_VALUES_help = ""
-
+    #TODO: MR fix this function, Mainsail dies on execution
+    cmd_INO_SET_PID_VALUES_help = "z.B.: INO_SET_PID_VALUES T=0 Kp=1.0 Ki=0.1 Kd=0.2"
     def cmd_INO_SET_PID_VALUES(self, gcmd):
         """custom gcode command for setting new PID values
 
@@ -393,26 +409,38 @@ class PLA_INO_Sensor:
 
 
 
+    def _create_PID_message(self, ki, kp, kd):      #MR TODO: rename this to: send PID values to ino    #MR TODO: print the pid values to console to find out if the correct values are taken from printer.cfg
+        """custom gcode command to send PID values that are saved in printer.cfg to INO board
 
-    #TODO write code correctly for new implementation
-    def _create_PID_message(self, ki, kp, kd):
-    #    request = ino_msg_pb2.serial_request()
-    #    self.target_temp = 0
-    #    request.settings.target = self.target_temp
-    #    request.settings.ki = ki
-    #    request.settings.kp = kp
-    #    request.settings.kd = kd
-    #    serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-    #    self.sequence += 1
-    #    return serial_data
+        :param gcmd: gcode command (object) that is processed
+        :type gcmd: ?
+        """
+        request = ino_msg_pb2.user_serial_request()
+        request.set_su_values.kp = kp
+        request.set_su_values.ki = ki
+        request.set_su_values.kd = kd
 
-        response = ino_msg_pb2.ino_serial_response()
-       
-        response.set_su_values.kp = kp
-        response.set_su_values.ki = ki
-        response.set_su_values.kd = kd
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        #self.write_queue.append(serial_data)
+        return serial_data
 
-        serial_data = protobuf_utils.create_request(response, self.sequence,self.flag)
+
+
+    cmd_INO_TEST_PID_SETTING_help = "trys to send static pid values for testing purpose"
+    def cmd_INO_TEST_PID_SETTING(self, gcmd): #MR TODO: remove this function, its only for testing
+        """trys to send static pid values for testing purposed
+
+        :param gcmd: gcode command (object) that is processed
+        :type gcmd: ?
+        """
+        request = ino_msg_pb2.user_serial_request()
+        #request.set_settings.pid_target_temperature = variable
+        request.set_su_values.kp = 1.1
+        request.set_su_values.ki = 2.2
+        request.set_su_values.kd = 3.3
+
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
         self.sequence += 1
         self.write_queue.append(serial_data)
 
@@ -420,6 +448,11 @@ class PLA_INO_Sensor:
 
     cmd_INO_RESET_ERROR_FLAGS_help = "resets INO board error flags"
     def cmd_INO_RESET_ERROR_FLAGS(self, gcmd):
+        """custom gcode command the reset error modes in the INO board
+
+        :param gcmd: gcode command (object) that is processed
+        :type gcmd: ?
+        """
         request = ino_msg_pb2.user_serial_request()
         request.pla_cmd.command = ino_msg_pb2.clear_errors
 
@@ -431,6 +464,7 @@ class PLA_INO_Sensor:
     cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
     # dead
     def cmd_INO_DEBUG_OUT(self, gcmd):
+
         logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
 
@@ -469,13 +503,14 @@ class PLA_INO_Sensor:
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:   
+            #first_queue_element = self.read_queue.pop(0) #MR TODO use this and delete  "self.read_queue = self.read_queue[1:]""
             if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
-                self.temp = self.read_queue[0].ino_standard_msg.temp                # 
+                self.temp = self.read_queue[0].ino_standard_msg.temp                # get temp from standard message
 
                 #print to mainsail console for testing  
-                #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}")
                 #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}, temperature:{self.read_queue[0].ino_standard_msg.temp}, target_temp:{self.read_queue[0].ino_standard_msg.temp_target}, error_code:{self.read_queue[0].ino_standard_msg.temp_target}, status:{self.read_queue[0].ino_standard_msg.status}, DC:{self.read_queue[0].ino_standard_msg.DC}")
-                
+                #logging.info("text") # to log stuff in klippy log
+
                 """
             elif self.read_queue[0].WhichOneof('responses') == 'ino_settings':
                 #ino_target_temperature = self.read_queue[0].ino_settings.target_temperature
@@ -501,51 +536,14 @@ class PLA_INO_Sensor:
 
             elif self.read_queue[0].WhichOneof('responses') == 'log_msg':
                 #self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
-                self.gcode.respond_info(f"ino_message: {self.read_queue[0].log_msg.message}")
+                self.gcode.respond_info(f"ino: {self.read_queue[0].log_msg.message}")
 
+            else:
+                self.read_queue[0]  #MR TODO: maybe needs to be decoded first?
 
             self.read_queue = self.read_queue[1:]   #delete first element of que //TODO do i need this?
 
-           
 
-
-            """
-            text_line = self.read_queue.pop(0)
-            
-            if text_line.startswith("Temp"):
-                text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
-                logging.info(text_dict)
-                if "Temp" in text_dict:
-                    self.temp = float(text_dict["Temp"])
-                else:
-                    logging.warning("No temperature transmitted from INO.")
-
-            elif text_line.startswith("debug"):
-                text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
-                logging.info(text_dict)
-                #print message to Mainsail terminal
-                self.gcode.respond_info(text_dict) # output to mainsail console
-
-            else:
-                logging.info(text_line)
-                #self.gcode.respond_info(text_line) # output to mainsail console
-            """
-
-    """
-    def _process_read_queue(self):
-        # Process any decoded lines from the device
-        while not len(self.read_queue) == 0:
-            text_line = self.read_queue.pop(0)
-            if text_line.startswith("Tick"):
-                text_dict = {i.split(":")[0].strip():i.split(":")[1].strip() for i in text_line.split(",")}
-                logging.info(text_dict)
-                if "Temp" in text_dict:
-                    self.temp = float(text_dict["Temp"])
-                else:
-                    logging.warning("No temperature transmitted from INO.")
-            else:
-                logging.info(text_line)
-    """
 
 def load_config(config):
     # Register sensor
