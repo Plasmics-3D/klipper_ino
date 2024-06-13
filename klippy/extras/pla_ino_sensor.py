@@ -389,8 +389,8 @@ class PLA_INO_Sensor:
         self.write_queue.append(serial_data)
 
 
-    #TODO: MR fix this function, Mainsail dies on execution
-    cmd_INO_SET_PID_VALUES_help = "z.B.: INO_SET_PID_VALUES T=0 Kp=1.0 Ki=0.1 Kd=0.2"
+
+    cmd_INO_SET_PID_VALUES_help = "z.B.: INO_SET_PID_VALUES T=0 KP=1.0 KI=2.1 KD=3.2"
     def cmd_INO_SET_PID_VALUES(self, gcmd):
         """custom gcode command for setting new PID values
 
@@ -401,10 +401,11 @@ class PLA_INO_Sensor:
         extruder = self._get_extruder_for_commands(index, gcmd)
         heater = extruder.get_heater()
 
-        kp = gcmd.get_float("Kp", 0.0)
-        ki = gcmd.get_float("Ki", 0.0)
-        kd = gcmd.get_float("Kd", 0.0)
+        kp = gcmd.get_float('KP', 0.0)
+        ki = gcmd.get_float('KI', 0.0)
+        kd = gcmd.get_float('KD', 0.0)
         message = self._create_PID_message(ki,kp,kd)
+
         self.write_queue.append(message)
 
 
@@ -503,46 +504,45 @@ class PLA_INO_Sensor:
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:   
-            #first_queue_element = self.read_queue.pop(0) #MR TODO use this and delete  "self.read_queue = self.read_queue[1:]""
-            if self.read_queue[0].WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
-                self.temp = self.read_queue[0].ino_standard_msg.temp                # get temp from standard message
+            first_queue_element = self.read_queue.pop(0) #MR TODO use this and delete  "self.read_queue = self.read_queue[1:]""
+            if first_queue_element.WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
+                self.temp = first_queue_element.ino_standard_msg.temp                # get temp from standard message
 
                 #print to mainsail console for testing  
-                #self.gcode.respond_info(f"tick:{self.read_queue[0].ino_standard_msg.tick}, temperature:{self.read_queue[0].ino_standard_msg.temp}, target_temp:{self.read_queue[0].ino_standard_msg.temp_target}, error_code:{self.read_queue[0].ino_standard_msg.temp_target}, status:{self.read_queue[0].ino_standard_msg.status}, DC:{self.read_queue[0].ino_standard_msg.DC}")
+                #self.gcode.respond_info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.temp_target}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
                 #logging.info("text") # to log stuff in klippy log
 
                 """
-            elif self.read_queue[0].WhichOneof('responses') == 'ino_settings':
-                #ino_target_temperature = self.read_queue[0].ino_settings.target_temperature
-                #ino_pid_target_temperature = self.read_queue[0].ino_settings.pid_target_temperature
+            elif first_queue_element.WhichOneof('responses') == 'ino_settings':
+                #ino_target_temperature = first_queue_element.ino_settings.target_temperature
+                #ino_pid_target_temperature = first_queue_element.ino_settings.pid_target_temperature
 
-                self.gcode.respond_info(f"ino_target_temperature:{self.read_queue[0].ino_settings.target_temperature}, ino_pid_target_temperature:{self.read_queue[0].ino_settings.pid_target_temperature}")
+                self.gcode.respond_info(f"ino_target_temperature:{first_queue_element.ino_settings.target_temperature}, ino_pid_target_temperature:{first_queue_element.ino_settings.pid_target_temperature}")
 
-            elif self.read_queue[0].WhichOneof('responses') == 'ino_su_settings':
+            elif first_queue_element.WhichOneof('responses') == 'ino_su_settings':
                 #stuff
                 pass
                 """
 
-            elif self.read_queue[0].WhichOneof('responses') == 'ino_general_msg':
-                if self.read_queue[0].ino_settings.HasField('kp'):  #check if kp is contained, only triplets of kp ki kd wil be sent
-                    self.gcode.respond_info(f"Kp:{self.read_queue[0].ino_general_msg.kp}, Ki:{self.read_queue[0].ino_general_msg.ki}, Kd:{self.read_queue[0].ino_general_msg.kd}")
+            elif first_queue_element.WhichOneof('responses') == 'ino_general_msg':
+                if first_queue_element.ino_settings.HasField('kp'):  #check if kp is contained, only triplets of kp ki kd wil be sent
+                    self.gcode.respond_info(f"Kp:{first_queue_element.ino_general_msg.kp}, Ki:{first_queue_element.ino_general_msg.ki}, Kd:{first_queue_element.ino_general_msg.kd}")
 
-                if self.read_queue[0].ino_settings.HasField('pid_tune_finished'):  
+                if first_queue_element.ino_settings.HasField('pid_tune_finished'):  
                     self.gcode.respond_info(f"pid tune finished")
                 
-                if self.read_queue[0].ino_settings.HasField('general_message'): 
-                    self.gcode.respond_info(f"general_message:{self.read_queue[0].ino_general_msg.general_message}")
+                if first_queue_element.ino_settings.HasField('general_message'): 
+                    self.gcode.respond_info(f"general_message:{first_queue_element.ino_general_msg.general_message}")
 
 
-            elif self.read_queue[0].WhichOneof('responses') == 'log_msg':
-                #self.gcode.respond_info(f"ino_message:{self.read_queue[0].log_msg.message}, log_level:{self.read_queue[0].log_msg.log_lvl}")
-                self.gcode.respond_info(f"ino: {self.read_queue[0].log_msg.message}")
+            elif first_queue_element.WhichOneof('responses') == 'log_msg':
+                #self.gcode.respond_info(f"ino_message:{first_queue_element.log_msg.message}, log_level:{first_queue_element.log_msg.log_lvl}")
+                self.gcode.respond_info(f"ino: {first_queue_element.log_msg.message}")
 
             else:
-                self.read_queue[0]  #MR TODO: maybe needs to be decoded first?
+                first_queue_element  #MR TODO: maybe needs to be decoded first?
 
-            self.read_queue = self.read_queue[1:]   #delete first element of que //TODO do i need this?
-
+           
 
 
 def load_config(config):
