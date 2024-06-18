@@ -397,7 +397,7 @@ class PLA_INO_Sensor:
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-        index = gcmd.get_int("T", None, minval=0)
+        index = gcmd.get_int('T', None, minval=0)
         extruder = self._get_extruder_for_commands(index, gcmd)
         heater = extruder.get_heater()
 
@@ -504,9 +504,11 @@ class PLA_INO_Sensor:
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:   
-            first_queue_element = self.read_queue.pop(0) #MR TODO use this and delete  "self.read_queue = self.read_queue[1:]""
+            first_queue_element = self.read_queue.pop(0)
             if first_queue_element.WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
                 self.temp = first_queue_element.ino_standard_msg.temp                # get temp from standard message
+
+                logging.info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.temp_target}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
 
                 #print to mainsail console for testing  
                 #self.gcode.respond_info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.temp_target}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
