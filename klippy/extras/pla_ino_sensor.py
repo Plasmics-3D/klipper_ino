@@ -379,6 +379,34 @@ class PLA_INO_Sensor:
         return extruder
 
 
+    def _get_error_code(self, message):
+        """extracts the error code from the numerated message
+
+        :param message: message that contains the error code
+        :type message: str
+        """
+        error_code_nr = message.split(": ")[1]
+
+        if error_code_nr == "0":
+            error_code = "user_shutdown"
+        elif error_code_nr == "1":
+            error_code = "heating_too_fast"
+        elif error_code_nr == "2":
+            error_code = "heating_too_slow"
+        elif error_code_nr == "3":
+            error_code = "exceeded_max_temp"
+        elif error_code_nr == "4":
+            error_code = "no_heartbeat_received"
+        elif error_code_nr == "5":
+            error_code = "temperature_unstable"
+        elif error_code_nr == "6":
+            error_code = "thermocouple_disconnected"
+        elif error_code_nr == "7":
+            error_code = "no_error"
+
+        return error_code
+
+
     cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
     def cmd_INO_PID_TUNE(self, gcmd):
         """custom gcode command for tuning the PID parameters of the ino board
@@ -561,6 +589,9 @@ class PLA_INO_Sensor:
             elif first_queue_element.WhichOneof('responses') == 'log_msg':
                 #self.gcode.respond_info(f"ino_message:{first_queue_element.log_msg.message}, log_level:{first_queue_element.log_msg.log_lvl}")
                 self.gcode.respond_info(f"ino: {first_queue_element.log_msg.message}")
+
+                if (first_queue_element.log_msg.message.startswith("error_code:")):
+                    self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
 
             else:
                 first_queue_element  #MR TODO: maybe needs to be decoded first?
