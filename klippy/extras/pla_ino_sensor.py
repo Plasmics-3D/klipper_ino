@@ -101,11 +101,6 @@ class PLA_INO_Sensor:
                 self.cmd_INO_ERROR_OUTPUT,
                 desc=self.cmd_INO_ERROR_OUTPUT_help,
             )
-            self.gcode.register_command(    #MR TODO: remove this function, its only to test to send PID values to the INO board
-                "INO_TEST_PID_SETTING",
-                self.cmd_INO_TEST_PID_SETTING,
-                desc=self.cmd_INO_TEST_PID_SETTING_help,
-            )
             
 
             logging.info(f"J: All Gcode commands added.")
@@ -424,7 +419,7 @@ class PLA_INO_Sensor:
         elif past_error_code_nr == "7":
             past_error_code = "no_error"
 
-        return "now: " + error_code + "  past: " + past_error_code
+        return "\nnow: " + error_code + "  \npast: " + past_error_code
 
 
     cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
@@ -480,25 +475,6 @@ class PLA_INO_Sensor:
         self.sequence += 1
         #self.write_queue.append(serial_data)
         return serial_data
-
-
-
-    cmd_INO_TEST_PID_SETTING_help = "trys to send static pid values for testing purpose"
-    def cmd_INO_TEST_PID_SETTING(self, gcmd): #MR TODO: remove this function, its only for testing
-        """trys to send static pid values for testing purposed
-
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        request = ino_msg_pb2.user_serial_request()
-        #request.set_settings.pid_target_temperature = variable
-        request.set_su_values.kp = 1.1
-        request.set_su_values.ki = 2.2
-        request.set_su_values.kd = 3.3
-
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        self.sequence += 1
-        self.write_queue.append(serial_data)
 
 
 
