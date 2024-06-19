@@ -263,6 +263,12 @@ class PLA_INO_Sensor:
         if self._first_connect:
             message = self._create_PID_message(self.pid_Ki,self.pid_Kp,self.pid_Kd)
             self.write_queue.append(message)
+
+            message = self._create_error_reset_message()
+            self.write_queue.append(message)
+
+
+
             
     def _run_Read(self, eventtime):
         """Readout of the incoming messages over the serial port
@@ -276,6 +282,7 @@ class PLA_INO_Sensor:
         while True:
             # try:
             raw_bytes = bytearray(self.serial.read_until(self.flag.to_bytes()))
+            #logging.info("while true: log")
             # except Exception as e:
             #     logging.info(f"J: error in serial readout: {e}")
             #     self.disconnect()
@@ -460,6 +467,20 @@ class PLA_INO_Sensor:
         serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
         self.sequence += 1
         self.write_queue.append(serial_data)
+
+    def _create_error_reset_message(self):    
+        """custom gcode command to reset errors in INO board
+
+        :param gcmd: gcode command (object) that is processed
+        :type gcmd: ?
+        """
+        request = ino_msg_pb2.user_serial_request()
+        request.pla_cmd.command = ino_msg_pb2.clear_errors
+
+        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+        self.sequence += 1
+        #self.write_queue.append(serial_data)
+        return serial_data
 
 
     cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
