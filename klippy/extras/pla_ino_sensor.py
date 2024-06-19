@@ -379,13 +379,13 @@ class PLA_INO_Sensor:
         return extruder
 
 
-    def _get_error_code(self, message):
+    def _get_error_code(self, message): #TODO MR make this more elegant!
         """extracts the error code from the numerated message
 
         :param message: message that contains the error code
         :type message: str
         """
-        error_code_nr = message.split(": ")[1]
+        error_code_nr = message.split(" ")[1]
 
         if error_code_nr == "0":
             error_code = "user_shutdown"
@@ -404,7 +404,27 @@ class PLA_INO_Sensor:
         elif error_code_nr == "7":
             error_code = "no_error"
 
-        return error_code
+
+        past_error_code_nr = message.split(" ")[3]
+
+        if past_error_code_nr == "0":
+            past_error_code = "user_shutdown"
+        elif past_error_code_nr == "1":
+            past_error_code = "heating_too_fast"
+        elif past_error_code_nr == "2":
+            past_error_code = "heating_too_slow"
+        elif past_error_code_nr == "3":
+            past_error_code = "exceeded_max_temp"
+        elif past_error_code_nr == "4":
+            past_error_code = "no_heartbeat_received"
+        elif past_error_code_nr == "5":
+            past_error_code = "temperature_unstable"
+        elif past_error_code_nr == "6":
+            past_error_code = "thermocouple_disconnected"
+        elif past_error_code_nr == "7":
+            past_error_code = "no_error"
+
+        return "now: " + error_code + "  past: " + past_error_code
 
 
     cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
