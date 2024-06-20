@@ -275,16 +275,16 @@ class PLA_INO_Sensor:
         """
         # Do non-blocking reads from serial and try to find lines
         while True:
-            # try:
-            raw_bytes = bytearray(self.serial.read_until(self.flag.to_bytes()))
-            #logging.info("while true: log")
-            # except Exception as e:
-            #     logging.info(f"J: error in serial readout: {e}")
-            #     self.disconnect()
-            #     break
-            # else:
-            # Decoded any escaped bytes to get the original data frame.
-            output = protobuf_utils.xor_and_remove_value(raw_bytes[:-1], bytes([self.escape]))
+            try:
+                raw_bytes = bytearray(self.serial.read_until(self.flag.to_bytes()))
+                logging.info("while true: log")
+            except Exception as e:
+                 logging.info(f"J: error in serial readout: {e}")
+                 self.disconnect()
+                 break
+            else:
+                #Decoded any escaped bytes to get the original data frame.
+                output = protobuf_utils.xor_and_remove_value(raw_bytes[:-1], bytes([self.escape]))
 
             # Calculate the checksum, and compare it with the value in the received packet.
             checksum = output[-1]
