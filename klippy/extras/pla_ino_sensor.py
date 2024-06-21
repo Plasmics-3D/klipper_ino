@@ -256,10 +256,10 @@ class PLA_INO_Sensor:
 
 
         if self._first_connect:
-            message = self._create_PID_message(self.pid_Ki,self.pid_Kp,self.pid_Kd)
+            message = self._create_PID_message(self.pid_Ki,self.pid_Kp,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
             self.write_queue.append(message)
 
-            message = self._create_error_reset_message()
+            message = self._create_error_reset_message()                                #resets error code in ino
             self.write_queue.append(message)
 
 
