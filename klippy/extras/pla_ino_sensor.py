@@ -232,7 +232,7 @@ class PLA_INO_Sensor:
         and sending pid control parameters to the ino board
         """
         try:
-            self.serial = serial.Serial(self.serial_port, 115200, timeout=60)
+            self.serial = serial.Serial(self.serial_port, 115200, timeout=1) #todo check timeout value 1=1s?
             logging.info("Connection to Ino successful.")
             self._failed_connection_attempts = 0
         except Exception as e:
@@ -315,6 +315,7 @@ class PLA_INO_Sensor:
             except:
                 print("failed to decode")
             else:
+                logging.info(f"response from ino: {response}")
                 self.read_queue.append(response)
                 break
             """
