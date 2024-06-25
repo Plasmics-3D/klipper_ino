@@ -546,7 +546,7 @@ class PLA_INO_Sensor:
         self.write_queue.append(serial_data)
 
 
-
+    #TODO MR 25.06.2024: the communication between ino_board and klipper needs to be looked over, finalized and cleaned up. This section needs to be reworked regarding this future improvements and cleaned up.
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:   
@@ -591,7 +591,7 @@ class PLA_INO_Sensor:
                     self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
 
             else:
-                first_queue_element  #MR TODO: maybe needs to be decoded first?
+                logging.info(f"message not recognized: {first_queue_element}")
 
            
 
