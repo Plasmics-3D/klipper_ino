@@ -493,7 +493,7 @@ class PLA_INO_Sensor:
         self.sequence += 1
         self.write_queue.append(serial_data)
 
-    def _create_error_reset_message(self):    
+    def _create_error_reset_message(self):    #TODO MR 04.07.2024 use this message in     def cmd_INO_RESET_ERROR_FLAGS(self, gcmd): because otherwise code is duplicated 
         """custom gcode command to reset errors in INO board
 
         :param gcmd: gcode command (object) that is processed
