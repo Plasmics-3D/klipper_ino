@@ -270,12 +270,12 @@ class PLA_INO_Sensor:
         logging.info("Ino read/write timers started.")
 
 
-        # if self._first_connect:
-        #     message = self._create_PID_message(self.pid_Ki,self.pid_Kp,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
-        #     self.write_queue.append(message)
+        if self._first_connect:
+             message = self._create_PID_message(self.pid_Kp,self.pid_Ki,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
+             self.write_queue.append(message)
 
-        #     message = self._create_error_reset_message()                                #resets error code in ino
-        #     self.write_queue.append(message)
+             message = self._create_error_reset_message()                                #resets error code in ino
+             self.write_queue.append(message)
 
 
 
@@ -483,14 +483,14 @@ class PLA_INO_Sensor:
         kp = gcmd.get_float('KP', 0.0)
         ki = gcmd.get_float('KI', 0.0)
         kd = gcmd.get_float('KD', 0.0)
-        message = self._create_PID_message(ki,kp,kd)
+        message = self._create_PID_message(kp,ki,kd)
 
         # TODO Lee
         # self.write_queue.append(message)
 
 
 
-    def _create_PID_message(self, ki, kp, kd):      #MR TODO: rename this to: send PID values to ino    #MR TODO: print the pid values to console to find out if the correct values are taken from printer.cfg
+    def _create_PID_message(self, kp, ki, kd):      #MR TODO: rename this to: send PID values to ino    #MR TODO: print the pid values to console to find out if the correct values are taken from printer.cfg
         """custom gcode command to send PID values that are saved in printer.cfg to INO board
 
         :param gcmd: gcode command (object) that is processed
@@ -626,7 +626,7 @@ class PLA_INO_Sensor:
                     self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
 
             else:
-                first_queue_element  #MR TODO: maybe needs to be decoded first?
+                logging.info(f"message not recognized: {first_queue_element}")
 
            
 
