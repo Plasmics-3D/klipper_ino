@@ -269,13 +269,13 @@ class PLA_INO_Sensor:
 
         logging.info("Ino read/write timers started.")
 
-
+        
         if self._first_connect:
-             message = self._create_PID_message(self.pid_Kp,self.pid_Ki,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
-             self.write_queue.append(message)
+            #message = self._create_PID_message(self.pid_Kp,self.pid_Ki,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
+            #self.write_queue.append(message)
 
-             message = self._create_error_reset_message()                                #resets error code in ino
-             self.write_queue.append(message)
+            message = self._create_error_reset_message()                                #resets error code in ino
+            self.write_queue.append(message)
 
 
 
@@ -539,9 +539,8 @@ class PLA_INO_Sensor:
         #self.write_queue.append(serial_data)
         return serial_data
 
-
-    cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
     # dead
+    cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
     def cmd_INO_DEBUG_OUT(self, gcmd):
 
         logging.warning("Command INO_DEBUG_OUT is deprecated!")
@@ -554,7 +553,7 @@ class PLA_INO_Sensor:
 
         serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
         self.sequence += 1
-        # self.write_queue.append(serial_data)
+        self.write_queue.append(serial_data)
         # TODO Lee?
 
 
