@@ -62,8 +62,6 @@ class PLA_INO_Sensor:
         self.last_debug_timestamp = self.reactor.monotonic()
         self.last_debug_message = ""
 
-        self.last_heartbeat = time.time()
-
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
         self.printer.register_event_handler(
             "klippy:disconnect", self._handle_disconnect
@@ -761,6 +759,8 @@ class InoController():
         self.reader_thread = None  # Initialize to None
         self.current_target_temp = 0
 
+        self.last_heartbeat = time.time()
+
         try:
             self.serial = serial.Serial(serial_port, 115200, timeout=60)
         except Exception as e:
@@ -821,9 +821,9 @@ class InoController():
         needs to be executed in a loop
         checks if it is time to send a heartbeat message and sends it if necessary
         """
-        if time.time() - last_heartbeat > HEARTBEAT_TIMER:
-            self.ino_controller.send_heartbeat()
-            last_heartbeat = time.time() 
+        if time.time() - self.last_heartbeat > HEARTBEAT_TIMER:
+            self.send_heartbeat()
+            self.last_heartbeat = time.time() 
 
     def start_pid_tuning(self, target_temp):   
         ino_request = ino_msg_pb2.user_serial_request()
