@@ -14,6 +14,7 @@ from .protobuf_utils.protobuf_definitions.build import ino_msg_pb2
 from .protobuf_utils.protobuf_definitions.build import pla_log_pb2
 from .protobuf_utils import protobuf_utils
 
+import time
 
 from serial.threaded import ReaderThread, Packetizer
 # from queue import Queue, Empty
@@ -21,7 +22,8 @@ from serial.threaded import ReaderThread, Packetizer
 # determines the timing for all interactions with INO including reading, writing and connection (attempts)
 SERIAL_TIMER = 0.1
 
-
+# determines the timing for heartbeat messages to the INO board
+HEARTBEAT_TIMER = 0.3
 
 
 
@@ -59,6 +61,8 @@ class PLA_INO_Sensor:
         #
         self.last_debug_timestamp = self.reactor.monotonic()
         self.last_debug_message = ""
+
+        self.last_heartbeat = time.time()
 
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
         self.printer.register_event_handler(
@@ -365,6 +369,8 @@ class PLA_INO_Sensor:
         :return: tell reactor not to call this function any more (if not available)
         :rtype: ?
         """
+        self.ino_controller.manage_heartbeat()  #TODO put this in a dedicated place where it belongs. This place is temporary!
+
         while not len(self.write_queue) == 0:
             text_line = self.write_queue.pop(0)
             if text_line:
@@ -802,9 +808,22 @@ class InoController():
         self.current_target_temp = 0
 
     def send_heartbeat(self):
+        """
+        sends a heartbeat message to ino board to not trigger the heartbeat error
+        TODO: currently, the message is the temperature. Add a dedicated heartbeat message that can be sent over protobuff
+        """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = self.current_target_temp
         self.send_request(ino_request) 
+
+    def manage_heartbeat(self):
+        """
+        needs to be executed in a loop
+        checks if it is time to send a heartbeat message and sends it if necessary
+        """
+        if time.time() - last_heartbeat > HEARTBEAT_TIMER:
+            self.ino_controller.send_heartbeat()
+            last_heartbeat = time.time() 
 
     def start_pid_tuning(self, target_temp):   
         ino_request = ino_msg_pb2.user_serial_request()
