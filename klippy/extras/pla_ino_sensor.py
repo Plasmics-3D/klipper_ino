@@ -589,47 +589,51 @@ class PLA_INO_Sensor:
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:   
             first_queue_element = self.read_queue.pop(0)
-            if first_queue_element.WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
-                self.temp = first_queue_element.ino_standard_msg.temp                # get temp from standard message
+            try:
+                if first_queue_element.WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
+                    self.temp = first_queue_element.ino_standard_msg.temp                # get temp from standard message
 
-                logging.info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
+                    logging.info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
 
-                #print to mainsail console for testing  
-                #self.gcode.respond_info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.temp_target}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
-                #logging.info("text") # to log stuff in klippy log
+                    #print to mainsail console for testing  
+                    #self.gcode.respond_info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.temp_target}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
+                    #logging.info("text") # to log stuff in klippy log
 
-                """
-            elif first_queue_element.WhichOneof('responses') == 'ino_settings':
-                #ino_target_temperature = first_queue_element.ino_settings.target_temperature
-                #ino_pid_target_temperature = first_queue_element.ino_settings.pid_target_temperature
+                    """
+                elif first_queue_element.WhichOneof('responses') == 'ino_settings':
+                    #ino_target_temperature = first_queue_element.ino_settings.target_temperature
+                    #ino_pid_target_temperature = first_queue_element.ino_settings.pid_target_temperature
 
-                self.gcode.respond_info(f"ino_target_temperature:{first_queue_element.ino_settings.target_temperature}, ino_pid_target_temperature:{first_queue_element.ino_settings.pid_target_temperature}")
+                    self.gcode.respond_info(f"ino_target_temperature:{first_queue_element.ino_settings.target_temperature}, ino_pid_target_temperature:{first_queue_element.ino_settings.pid_target_temperature}")
 
-            elif first_queue_element.WhichOneof('responses') == 'ino_su_settings':
-                #stuff
-                pass
-                """
+                elif first_queue_element.WhichOneof('responses') == 'ino_su_settings':
+                    #stuff
+                    pass
+                    """
 
-            elif first_queue_element.WhichOneof('responses') == 'ino_general_msg':
-                if first_queue_element.ino_settings.HasField('kp'):  #check if kp is contained, only triplets of kp ki kd wil be sent
-                    self.gcode.respond_info(f"Kp:{first_queue_element.ino_general_msg.kp}, Ki:{first_queue_element.ino_general_msg.ki}, Kd:{first_queue_element.ino_general_msg.kd}")
+                elif first_queue_element.WhichOneof('responses') == 'ino_general_msg':
+                    if first_queue_element.ino_settings.HasField('kp'):  #check if kp is contained, only triplets of kp ki kd wil be sent
+                        self.gcode.respond_info(f"Kp:{first_queue_element.ino_general_msg.kp}, Ki:{first_queue_element.ino_general_msg.ki}, Kd:{first_queue_element.ino_general_msg.kd}")
 
-                if first_queue_element.ino_settings.HasField('pid_tune_finished'):  
-                    self.gcode.respond_info(f"pid tune finished")
+                    if first_queue_element.ino_settings.HasField('pid_tune_finished'):  
+                        self.gcode.respond_info(f"pid tune finished")
+                    
+                    if first_queue_element.ino_settings.HasField('general_message'): 
+                        self.gcode.respond_info(f"general_message:{first_queue_element.ino_general_msg.general_message}")
+
+
+                elif first_queue_element.WhichOneof('responses') == 'log_msg':
+                    #self.gcode.respond_info(f"ino_message:{first_queue_element.log_msg.message}, log_level:{first_queue_element.log_msg.log_lvl}")
+                    self.gcode.respond_info(f"ino: {first_queue_element.log_msg.message}")
+
+                    if (first_queue_element.log_msg.message.startswith("error_code:")):
+                        self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
+
+                else:
+                    logging.info(f"message not recognized: {first_queue_element}")
                 
-                if first_queue_element.ino_settings.HasField('general_message'): 
-                    self.gcode.respond_info(f"general_message:{first_queue_element.ino_general_msg.general_message}")
-
-
-            elif first_queue_element.WhichOneof('responses') == 'log_msg':
-                #self.gcode.respond_info(f"ino_message:{first_queue_element.log_msg.message}, log_level:{first_queue_element.log_msg.log_lvl}")
-                self.gcode.respond_info(f"ino: {first_queue_element.log_msg.message}")
-
-                if (first_queue_element.log_msg.message.startswith("error_code:")):
-                    self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
-
-            else:
-                logging.info(f"message not recognized: {first_queue_element}")
+            except:
+                logging.info(f"\nmessage not recognized: {first_queue_element}\n")
 
            
 
