@@ -414,7 +414,7 @@ class PLA_INO_Sensor:
         error_code_nr = message.split(" ")[1]
 
         if error_code_nr == "0":
-            error_code = "user_shutdown"
+            error_code = "no_error"
         elif error_code_nr == "1":
             error_code = "heating_too_fast"
         elif error_code_nr == "2":
@@ -428,13 +428,15 @@ class PLA_INO_Sensor:
         elif error_code_nr == "6":
             error_code = "thermocouple_disconnected"
         elif error_code_nr == "7":
-            error_code = "no_error"
+            error_code = "user_shutdown"
+        elif error_code_nr == "8":
+            error_code = "subceeded_min_temp"
 
 
         past_error_code_nr = message.split(" ")[3]
 
         if past_error_code_nr == "0":
-            past_error_code = "user_shutdown"
+            past_error_code = "no_error"
         elif past_error_code_nr == "1":
             past_error_code = "heating_too_fast"
         elif past_error_code_nr == "2":
@@ -448,7 +450,9 @@ class PLA_INO_Sensor:
         elif past_error_code_nr == "6":
             past_error_code = "thermocouple_disconnected"
         elif past_error_code_nr == "7":
-            past_error_code = "no_error"
+            past_error_code = "user_shutdown"
+        elif past_error_code_nr == "8":
+            past_error_code = "subceeded_min_temp"
 
         return "\nnow: " + error_code + "  \npast: " + past_error_code
 
