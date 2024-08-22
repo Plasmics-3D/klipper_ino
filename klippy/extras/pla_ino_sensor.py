@@ -818,11 +818,14 @@ class InoController():
     def send_heartbeat(self):
         """
         sends a heartbeat message to ino board to not trigger the heartbeat error
-        TODO: currently, the message is the temperature. Add a dedicated heartbeat message that can be sent over protobuff
+        TODO: currently, the message is a request for the hw_version. this needs to be replaced with a dedicated message
         """
+        # ino_request = ino_msg_pb2.user_serial_request()
+        # ino_request.set_settings.target_temperature = self.current_target_temp
+        # self.send_request(ino_request) 
         ino_request = ino_msg_pb2.user_serial_request()
-        ino_request.set_settings.target_temperature = self.current_target_temp
-        self.send_request(ino_request) 
+        ino_request.pla_cmd.command = ino_msg_pb2.get_hw_version
+        self.send_request(ino_request)
 
     def manage_heartbeat(self):
         """
