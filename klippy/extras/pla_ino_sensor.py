@@ -86,21 +86,21 @@ class PLA_INO_Sensor:
                 self.cmd_INO_READ_PID_VALUES,
                 desc=self.cmd_INO_READ_PID_VALUES_help,
             )
-            self.gcode.register_command(
-                "INO_SET_PID_VALUES",
-                self.cmd_INO_SET_PID_VALUES,
-                desc=self.cmd_INO_SET_PID_VALUES_help,
-            )
+            # self.gcode.register_command(
+            #     "INO_SET_PID_VALUES",
+            #     self.cmd_INO_SET_PID_VALUES,
+            #     desc=self.cmd_INO_SET_PID_VALUES_help,
+            # )
             self.gcode.register_command(
                 "INO_RESET_ERROR_FLAGS",
                 self.cmd_INO_RESET_ERROR_FLAGS,
                 desc=self.cmd_INO_RESET_ERROR_FLAGS_help,
             )
-            self.gcode.register_command(
-                "INO_DEBUG_OUT",
-                self.cmd_INO_DEBUG_OUT,
-                desc=self.cmd_INO_DEBUG_OUT_help,
-            )
+            # self.gcode.register_command(
+            #     "INO_DEBUG_OUT",
+            #     self.cmd_INO_DEBUG_OUT,
+            #     desc=self.cmd_INO_DEBUG_OUT_help,
+            # )
             self.gcode.register_command(
                 "INO_FIRMWARE_VERSION",
                 self.cmd_INO_FIRMWARE_VERSION,
@@ -477,42 +477,42 @@ class PLA_INO_Sensor:
 
 
 
-    cmd_INO_SET_PID_VALUES_help = "z.B.: INO_SET_PID_VALUES T=0 KP=1.0 KI=2.1 KD=3.2"
-    def cmd_INO_SET_PID_VALUES(self, gcmd):
-        """custom gcode command for setting new PID values
+    # cmd_INO_SET_PID_VALUES_help = "z.B.: INO_SET_PID_VALUES T=0 KP=1.0 KI=2.1 KD=3.2"
+    # def cmd_INO_SET_PID_VALUES(self, gcmd):
+    #     """custom gcode command for setting new PID values
 
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        index = gcmd.get_int('T', None, minval=0)
-        extruder = self._get_extruder_for_commands(index, gcmd)
-        heater = extruder.get_heater()
+    #     :param gcmd: gcode command (object) that is processed
+    #     :type gcmd: ?
+    #     """
+    #     index = gcmd.get_int('T', None, minval=0)
+    #     extruder = self._get_extruder_for_commands(index, gcmd)
+    #     heater = extruder.get_heater()
 
-        kp = gcmd.get_float('KP', 0.0)
-        ki = gcmd.get_float('KI', 0.0)
-        kd = gcmd.get_float('KD', 0.0)
-        message = self._create_PID_message(kp,ki,kd)
+    #     kp = gcmd.get_float('KP', 0.0)
+    #     ki = gcmd.get_float('KI', 0.0)
+    #     kd = gcmd.get_float('KD', 0.0)
+    #     message = self._create_PID_message(kp,ki,kd)
 
-        # TODO Lee
-        # self.write_queue.append(message)
+    #     # TODO Lee
+    #     # self.write_queue.append(message)
 
 
 
-    def _create_PID_message(self, kp, ki, kd):      #MR TODO: rename this to: send PID values to ino    #MR TODO: print the pid values to console to find out if the correct values are taken from printer.cfg
-        """custom gcode command to send PID values that are saved in printer.cfg to INO board
+    # def _create_PID_message(self, kp, ki, kd):      #MR TODO: rename this to: send PID values to ino    #MR TODO: print the pid values to console to find out if the correct values are taken from printer.cfg
+    #     """custom gcode command to send PID values that are saved in printer.cfg to INO board
 
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        request = ino_msg_pb2.user_serial_request()
-        request.set_su_values.kp = kp
-        request.set_su_values.ki = ki
-        request.set_su_values.kd = kd
+    #     :param gcmd: gcode command (object) that is processed
+    #     :type gcmd: ?
+    #     """
+    #     request = ino_msg_pb2.user_serial_request()
+    #     request.set_su_values.kp = kp
+    #     request.set_su_values.ki = ki
+    #     request.set_su_values.kd = kd
 
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        self.sequence += 1
-        #self.write_queue.append(serial_data)
-        return serial_data
+    #     serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+    #     self.sequence += 1
+    #     #self.write_queue.append(serial_data)
+    #     return serial_data
 
 
 
@@ -547,11 +547,11 @@ class PLA_INO_Sensor:
         #self.write_queue.append(serial_data)
         return serial_data
 
-    # dead
-    cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
-    def cmd_INO_DEBUG_OUT(self, gcmd):
+    # # dead
+    # cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
+    # def cmd_INO_DEBUG_OUT(self, gcmd):
 
-        logging.warning("Command INO_DEBUG_OUT is deprecated!")
+    #     logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
 
     cmd_INO_READ_PID_VALUES_help = "returns current ino board PID values"
@@ -897,5 +897,5 @@ class InoController():
         return responses
 
 
-if __name__ == '__main__':
-    ic = ino_controller('COM3')
+# if __name__ == '__main__':
+#     ic = ino_controller('COM3')
