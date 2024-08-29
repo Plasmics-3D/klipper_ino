@@ -92,9 +92,9 @@ class PLA_INO_Sensor:
             #     desc=self.cmd_INO_SET_PID_VALUES_help,
             # )
             self.gcode.register_command(
-                "INO_RESET_ERROR_FLAGS",
-                self.cmd_INO_RESET_ERROR_FLAGS,
-                desc=self.cmd_INO_RESET_ERROR_FLAGS_help,
+                "INO_RESET_ERROR",
+                self.cmd_INO_RESET_ERROR,
+                desc=self.cmd_INO_RESET_ERROR_help,
             )
             # self.gcode.register_command(
             #     "INO_DEBUG_OUT",
@@ -276,8 +276,11 @@ class PLA_INO_Sensor:
             #message = self._create_PID_message(self.pid_Kp,self.pid_Ki,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
             #self.write_queue.append(message)
 
-            message = self._create_error_reset_message()                                #resets error code in ino
-            self.write_queue.append(message)
+            # message = self._create_error_reset_message()                                #resets error code in ino
+            # self.write_queue.append(message)
+
+            self.ino_controller.request_ino_reset_error()
+            self.ino_controller.send_heartbeat()
 
 
 
@@ -516,8 +519,8 @@ class PLA_INO_Sensor:
 
 
 
-    cmd_INO_RESET_ERROR_FLAGS_help = "resets INO board error flags"
-    def cmd_INO_RESET_ERROR_FLAGS(self, gcmd):
+    cmd_INO_RESET_ERROR_help = "resets INO board error"
+    def cmd_INO_RESET_ERROR(self, gcmd):
         """custom gcode command the reset error modes in the INO board
 
         :param gcmd: gcode command (object) that is processed
@@ -533,19 +536,19 @@ class PLA_INO_Sensor:
         self.ino_controller.request_ino_reset_error()
 
 
-    def _create_error_reset_message(self):    
-        """custom gcode command to reset errors in INO board
+    # def _create_error_reset_message(self):    
+    #     """custom gcode command to reset errors in INO board
 
-        :param gcmd: gcode command (object) that is processed
-        :type gcmd: ?
-        """
-        request = ino_msg_pb2.user_serial_request()
-        request.pla_cmd.command = ino_msg_pb2.clear_errors
+    #     :param gcmd: gcode command (object) that is processed
+    #     :type gcmd: ?
+    #     """
+    #     request = ino_msg_pb2.user_serial_request()
+    #     request.pla_cmd.command = ino_msg_pb2.clear_errors
 
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        self.sequence += 1
-        #self.write_queue.append(serial_data)
-        return serial_data
+    #     serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
+    #     self.sequence += 1
+    #     #self.write_queue.append(serial_data)
+    #     return serial_data
 
     # # dead
     # cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
@@ -844,7 +847,7 @@ class InoController():
     def request_read_info(self):
         """
         To read PID values etc from ino board.
-        execute this function, and the ino board will return a protobuff message containing "read_info" this needs to be decoded
+        execute this function, and the ino board will return a protobuf message containing "read_info" this needs to be decoded
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.read_info
@@ -870,22 +873,21 @@ class InoController():
 
     def request_ino_reset_error(self):
         """
-        To get the firmware version from ino board.
-        execute this function, and the ino board will return a message containing its firmware version
+        request, the ino board to reset its errors
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.clear_errors
         self.send_request(ino_request)
 
-    def set_inoboard_pid_values(self, kp, ki, kd):
-        """
-        set pid values in the ino board
-        """
-        ino_request = ino_msg_pb2.user_serial_request()
-        ino_request.set_su_values.kp = kp
-        ino_request.set_su_values.ki = ki
-        ino_request.set_su_values.kd = kd
-        self.send_request(ino_request)
+    # def set_inoboard_pid_values(self, kp, ki, kd):
+    #     """
+    #     set pid values in the ino board
+    #     """
+    #     ino_request = ino_msg_pb2.user_serial_request()
+    #     ino_request.set_su_values.kp = kp
+    #     ino_request.set_su_values.ki = ki
+    #     ino_request.set_su_values.kd = kd
+    #     self.send_request(ino_request)
 
 
     def process_serial_data(self):
