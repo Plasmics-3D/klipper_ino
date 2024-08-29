@@ -279,6 +279,8 @@ class PLA_INO_Sensor:
             # message = self._create_error_reset_message()                                #resets error code in ino
             # self.write_queue.append(message)
 
+            #TODO MR 29.08.24: decide if it would be better to throw those operations in a que and not execute them "now".
+            #TODO MR 29.08.24:  Some commands are put in a que and some are not. review this and make it consistent if needed.
             self.ino_controller.request_ino_reset_error()
             self.ino_controller.send_heartbeat()
 
