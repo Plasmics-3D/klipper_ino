@@ -436,7 +436,10 @@ class PLA_INO_Sensor:
             error_code = "user_shutdown"
         elif error_code_nr == "8":
             error_code = "subceeded_min_temp"
-
+        elif error_code_nr == "9":
+            error_code = "temperature_read_error"
+        else:
+            error_code = "unknown_error"
 
         past_error_code_nr = message.split(" ")[3]
 
@@ -458,7 +461,11 @@ class PLA_INO_Sensor:
             past_error_code = "user_shutdown"
         elif past_error_code_nr == "8":
             past_error_code = "subceeded_min_temp"
-
+        elif error_code_nr == "9":
+            error_code = "temperature_read_error"
+        else:
+            error_code = "unknown_error"
+            
         return "\nnow: " + error_code + "  \npast: " + past_error_code
 
 
@@ -846,7 +853,7 @@ class InoController():
         ino_request.set_settings.pid_target_temperature = target_temp
         self.send_request(ino_request)
 
-    def request_read_info(self):
+    def request_ino_pid_values(self):
         """
         To read PID values etc from ino board.
         execute this function, and the ino board will return a protobuf message containing "read_info" this needs to be decoded
