@@ -75,7 +75,7 @@ class PLA_INO_Sensor:
         self.ino_controller = None
 
         # add the gcode commands
-        if "INO_FREQUENCY" in self.gcode.ready_gcode_handlers.keys():   #MR TODO is the frequency if needed? frequency is never set
+        if "INO_FREQUENCY" in self.gcode.ready_gcode_handlers.keys():   #MR TODO is the frequency if needed? frequency is never set. Frequency is not needed
             logging.info("J: INO Frequency already defined!")
         else:
             self.gcode.register_command(
@@ -637,13 +637,16 @@ class PLA_INO_Sensor:
                     if first_queue_element.ino_settings.HasField('general_message'): 
                         self.gcode.respond_info(f"general_message:{first_queue_element.ino_general_msg.general_message}")
 
-
                 elif first_queue_element.WhichOneof('responses') == 'log_msg':
-                    #self.gcode.respond_info(f"ino_message:{first_queue_element.log_msg.message}, log_level:{first_queue_element.log_msg.log_lvl}")
-                    self.gcode.respond_info(f"ino: {first_queue_element.log_msg.message}")
+                    if (first_queue_element.log_msg.message.startswith("s_")):
+                       time_and_date = time.strftime("%H:%M:%S %d.%m.%y", time.localtime())
+                       logging.info(f"{time_and_date} {first_queue_element.log_msg.message}") 
 
-                    if (first_queue_element.log_msg.message.startswith("error_code:")):
+                    elif (first_queue_element.log_msg.message.startswith("error_code:")):
                         self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
+
+                    else:
+                        self.gcode.respond_info(f"ino: {first_queue_element.log_msg.message}")
 
                 else:
                     logging.info(f"message not recognized: {first_queue_element}")
