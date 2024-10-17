@@ -129,21 +129,27 @@ class PLA_INO_Sensor:
 
     #TODO MR 17.10.2024 _handle_disconnect and _handle_shutdown overlap, maybe merge?
     def _handle_disconnect(self):
-        logging.info("J: Klipper reports disconnect: Ino heater shutting down")
-        self.disconnect("s 0")
+
+        logging.info("J: Klipper reports disconnect: Ino heater shutting down MARCUS TEST")
+        self.disconnect()
 
     def _handle_shutdown(self):
         logging.info("J: Klipper reports shutdown: Ino heater shutting down")
         self._handle_disconnect()
 
-    def disconnect(self, disconnect_message="d"):
+    #def disconnect(self, disconnect_message="d"):
+    def disconnect(self):
         """Once disconnect is called, the sensor will start shutting down.
         This includes:
         - Setting the temperature of the INO heater to 0
         - closing of the serial connection to the INO board
         - Unregisters the timers from this sensor
         """
-        self.write_queue.append(disconnect_message)
+        self.ino_controller.heat_to_target_temp(0)
+        time.sleep(0.001)
+        self.ino_controller.start_pid_tuning(0)
+
+        #self.write_queue.append(disconnect_message)
         try:
             self.ino_controller = None
             # self.serial.close()   #TODO MR 17.10.2024: check if enabling this, will shut off the ino while heating after emergency stop
