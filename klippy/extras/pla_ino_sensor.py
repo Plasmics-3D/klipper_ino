@@ -45,7 +45,6 @@ class PLA_INO_Sensor:
         self.name = config.get_name().split()[-1]
         self.printer.add_object("pla_ino_sensor " + self.name, self)
         self.heater = None
-        # self.serial = None
         self.read_timer = None
         self.temp = 0.0
         self.target_temp = 0.0
@@ -63,9 +62,7 @@ class PLA_INO_Sensor:
         self.last_debug_message = ""
 
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
-        self.printer.register_event_handler(
-            "klippy:disconnect", self._handle_disconnect
-        )
+        self.printer.register_event_handler("klippy:disconnect", self._handle_disconnect)
         self.printer.register_event_handler("klippy:shutdown", self._handle_shutdown)
 
         self.flag = 126
@@ -74,46 +71,33 @@ class PLA_INO_Sensor:
 
         self.ino_controller = None
 
-        # add the gcode commands
-        if "INO_FREQUENCY" in self.gcode.ready_gcode_handlers.keys():   #MR TODO is the frequency if needed? frequency is never set. Frequency is not needed
-            logging.info("J: INO Frequency already defined!")
-        else:
-            self.gcode.register_command(
-                "INO_PID_TUNE", self.cmd_INO_PID_TUNE, desc=self.cmd_INO_PID_TUNE_help
-            )
-            self.gcode.register_command(
-                "INO_READ_PID_VALUES",
-                self.cmd_INO_READ_PID_VALUES,
-                desc=self.cmd_INO_READ_PID_VALUES_help,
-            )
-            # self.gcode.register_command(
-            #     "INO_SET_PID_VALUES",
-            #     self.cmd_INO_SET_PID_VALUES,
-            #     desc=self.cmd_INO_SET_PID_VALUES_help,
-            # )
-            self.gcode.register_command(
-                "INO_RESET_ERROR",
-                self.cmd_INO_RESET_ERROR,
-                desc=self.cmd_INO_RESET_ERROR_help,
-            )
-            # self.gcode.register_command(
-            #     "INO_DEBUG_OUT",
-            #     self.cmd_INO_DEBUG_OUT,
-            #     desc=self.cmd_INO_DEBUG_OUT_help,
-            # )
-            self.gcode.register_command(
-                "INO_FIRMWARE_VERSION",
-                self.cmd_INO_FIRMWARE_VERSION,
-                desc=self.cmd_INO_FIRMWARE_VERSION_help,
-            )
-            self.gcode.register_command(
-                "INO_ERROR_OUTPUT",
-                self.cmd_INO_ERROR_OUTPUT,
-                desc=self.cmd_INO_ERROR_OUTPUT_help,
-            )
-            
 
-            logging.info(f"J: All Gcode commands added.")
+        self.gcode.register_command(
+            "INO_PID_TUNE", self.cmd_INO_PID_TUNE, desc=self.cmd_INO_PID_TUNE_help
+        )
+        self.gcode.register_command(
+            "INO_READ_PID_VALUES",
+            self.cmd_INO_READ_PID_VALUES,
+            desc=self.cmd_INO_READ_PID_VALUES_help,
+        )
+        self.gcode.register_command(
+            "INO_RESET_ERROR",
+            self.cmd_INO_RESET_ERROR,
+            desc=self.cmd_INO_RESET_ERROR_help,
+        )
+        self.gcode.register_command(
+            "INO_FIRMWARE_VERSION",
+            self.cmd_INO_FIRMWARE_VERSION,
+            desc=self.cmd_INO_FIRMWARE_VERSION_help,
+        )
+        self.gcode.register_command(
+            "INO_ERROR_OUTPUT",
+            self.cmd_INO_ERROR_OUTPUT,
+            desc=self.cmd_INO_ERROR_OUTPUT_help,
+        )
+
+        logging.info(f"J: All Gcode commands added.")
+
 
     def make_heater_known(self, heater, config):
         """This function is called once the heater is set up - acts as a handshake between heater and sensor
@@ -136,20 +120,14 @@ class PLA_INO_Sensor:
         """
         self.baud = 115200
         self.serial_port = config.get("serial")
-        self.pid_Kp = self.heater.pid_Kp
-        self.pid_Ki = self.heater.pid_Ki
-        self.pid_Kd = self.heater.pid_Kd
 
-        self.sample_timer = self.reactor.register_timer(
-            self._sample_PLA_INO, self.reactor.NOW
-        )
+        self.sample_timer = self.reactor.register_timer(self._sample_PLA_INO, self.reactor.NOW)
 
     def _handle_connect(self):
         if self.ino_controller is None:
             self._init_PLA_INO()
-        # if self.serial is None:
-        #     self._init_PLA_INO()
 
+    #TODO MR 17.10.2024 _handle_disconnect and _handle_shutdown overlap, maybe merge?
     def _handle_disconnect(self):
         logging.info("J: Klipper reports disconnect: Ino heater shutting down")
         self.disconnect("s 0")
@@ -168,7 +146,7 @@ class PLA_INO_Sensor:
         self.write_queue.append(disconnect_message)
         try:
             self.ino_controller = None
-            # self.serial.close()
+            # self.serial.close()   #TODO MR 17.10.2024: check if enabling this, will shut off the ino while heating after emergency stop
             logging.info("Serial port closed due to disconnect.")
         except Exception as e:
             logging.error(f"J: Disconnection failed due to: {e}")
@@ -206,6 +184,7 @@ class PLA_INO_Sensor:
 
     ### INO specifics
 
+    # TODO: MR 17.10.2024: check if heat_to_target_temp needs to be put in a que
     def send_temp(self):
         self.ino_controller.heat_to_target_temp(self.target_temp)
         # serial_data = protobuf_utils.create_heating_request(self.target_temp, self.sequence,self.flag)
@@ -234,9 +213,7 @@ class PLA_INO_Sensor:
                 self.temp = 0.0
         else:
             logging.info("No connection to INO possible - shutting down Klipper.")
-            self.printer.invoke_shutdown(
-                "Connection to INO lost and could not be reestablished!"
-            )
+            self.printer.invoke_shutdown("Connection to INO lost and could not be reestablished!")
             return self.reactor.NEVER
 
         current_time = self.reactor.monotonic()
@@ -245,17 +222,13 @@ class PLA_INO_Sensor:
 
     def _init_PLA_INO(self):
         """Initializes the INO by starting a serial connection to the ino board
-        and sending pid control parameters to the ino board
         """
         try:
             self.ino_controller = InoController(self.serial_port)
-            # self.serial = serial.Serial(self.serial_port, 115200, timeout=1) #todo check timeout value 1=1s?
             logging.info("Connection to Ino successful.")
             self._failed_connection_attempts = 0
         except Exception as e:
-            logging.error(
-                f"Unable to connect to Ino. This was attempt number {self._failed_connection_attempts + 1}. Exception: {e}"
-            )
+            logging.error(f"Unable to connect to Ino. This was attempt number {self._failed_connection_attempts + 1}. Exception: {e}" )
             self._failed_connection_attempts += 1
             return
 
@@ -265,17 +238,12 @@ class PLA_INO_Sensor:
         logging.info("J: Ino queues cleared.")
 
         self.read_timer = self.reactor.register_timer(self._run_Read, self.reactor.NOW)
-        self.write_timer = self.reactor.register_timer(
-            self._run_Write, self.reactor.NOW
-        )
+        self.write_timer = self.reactor.register_timer(self._run_Write, self.reactor.NOW)
 
         logging.info("Ino read/write timers started.")
 
         
         if self._first_connect:
-            #message = self._create_PID_message(self.pid_Kp,self.pid_Ki,self.pid_Kd)     #transmits PID vales stored in printer.cfg to ino
-            #self.write_queue.append(message)
-
             # message = self._create_error_reset_message()                                #resets error code in ino
             # self.write_queue.append(message)
 
@@ -283,8 +251,6 @@ class PLA_INO_Sensor:
             #TODO MR 29.08.24:  Some commands are put in a que and some are not. review this and make it consistent if needed.
             self.ino_controller.request_ino_reset_error()
             self.ino_controller.send_heartbeat()
-
-
 
             
     def _run_Read(self, eventtime):
@@ -303,66 +269,6 @@ class PLA_INO_Sensor:
         self._process_read_queue()
         return eventtime + SERIAL_TIMER
 
-        # TODO -> Delete the other code in this function
-
-        # Do non-blocking reads from serial and try to find lines
-        while True:
-            try:
-                raw_bytes = bytearray(self.serial.read_until(self.flag.to_bytes()))
-                logging.info("while true: log")
-            except Exception as e:
-                 logging.info(f"J: error in serial readout: {e}")
-                 self.disconnect()
-                 break
-            else:
-                #Decoded any escaped bytes to get the original data frame.
-                output = protobuf_utils.xor_and_remove_value(raw_bytes[:-1], bytes([self.escape]))
-
-            # Calculate the checksum, and compare it with the value in the received packet.
-            checksum = output[-1]
-            calculated_checksum = protobuf_utils.calculate_checksum(output[:-1])
-        
-            if checksum != calculated_checksum:
-                logging.warning(f"checksum failed: packet: {checksum}, calculated: {calculated_checksum}")
-                continue
-            
-
-            #try:
-            #    # Deserialize the protobuf data in to an object.
-            #    response = ino_msg_pb2.serial_response()
-            #    logging.info(f"output {output}")
-            #    response.ParseFromString(bytes(output[1:-1]))
-            #except:
-            #    logging.warning("failed to decode")
-            #else:
-            #    message_content = response.log_msg.message
-            #    self.read_queue.append(message_content)
-            #    break
-
-            try:
-                # Deserialize the protobuf data in to an object.
-                response = ino_msg_pb2.ino_serial_response()
-                #logging.info(f"output {output}")            
-                response.ParseFromString(bytes(output[1:-1]))
-            except:
-                print("failed to decode")
-            else:
-                logging.info(f"response from ino: {response}")
-                self.read_queue.append(response)
-                break
-            """
-            if response.WhichOneof('responses') == 'ino_standard_msg':
-                
-                #print to mainsail console for testing
-                self.gcode.respond_info(f"tick:{response.ino_standard_msg.tick}, temperature:{response.ino_standard_msg.temp}, target_temp:{response.ino_standard_msg.temp_target}, error_code:{response.ino_standard_msg.temp_target}, status:{response.ino_standard_msg.status}, DC:{response.ino_standard_msg.DC}")
-                self.temp = response.ino_standard_msg.temp
-                break
-            """
-        # logging.info(f"J: Read queue contents: {self.read_queue}")
-
-        self.last_debug_timestamp = self.reactor.monotonic()
-        self._process_read_queue()
-        return eventtime + SERIAL_TIMER
 
     def _run_Write(self, eventtime):
         """Write the messages that are in the queue to the serial connection
@@ -372,7 +278,9 @@ class PLA_INO_Sensor:
         :return: tell reactor not to call this function any more (if not available)
         :rtype: ?
         """
-        self.ino_controller.manage_heartbeat()  #TODO put this in a dedicated place where it belongs. This place is temporary!
+
+        #TODO MR:put this in a dedicated place where it belongs. This place is temporary! or check if manage heartbeat is executed, and if dont execute the rest
+        self.ino_controller.manage_heartbeat()  
 
         while not len(self.write_queue) == 0:
             text_line = self.write_queue.pop(0)
@@ -380,7 +288,6 @@ class PLA_INO_Sensor:
                 try:
                     logging.info(f"writing {text_line}")
                     self.ino_controller.reader_thread.write(text_line)
-                    # self.serial.write(text_line)
                 except Exception as e:
                     logging.info(f"J: error in serial communication (writing): {e}")
                     self.disconnect()
@@ -489,44 +396,6 @@ class PLA_INO_Sensor:
 
 
 
-    # cmd_INO_SET_PID_VALUES_help = "z.B.: INO_SET_PID_VALUES T=0 KP=1.0 KI=2.1 KD=3.2"
-    # def cmd_INO_SET_PID_VALUES(self, gcmd):
-    #     """custom gcode command for setting new PID values
-
-    #     :param gcmd: gcode command (object) that is processed
-    #     :type gcmd: ?
-    #     """
-    #     index = gcmd.get_int('T', None, minval=0)
-    #     extruder = self._get_extruder_for_commands(index, gcmd)
-    #     heater = extruder.get_heater()
-
-    #     kp = gcmd.get_float('KP', 0.0)
-    #     ki = gcmd.get_float('KI', 0.0)
-    #     kd = gcmd.get_float('KD', 0.0)
-    #     message = self._create_PID_message(kp,ki,kd)
-
-    #     # TODO Lee
-    #     # self.write_queue.append(message)
-
-
-
-    # def _create_PID_message(self, kp, ki, kd):      #MR TODO: rename this to: send PID values to ino    #MR TODO: print the pid values to console to find out if the correct values are taken from printer.cfg
-    #     """custom gcode command to send PID values that are saved in printer.cfg to INO board
-
-    #     :param gcmd: gcode command (object) that is processed
-    #     :type gcmd: ?
-    #     """
-    #     request = ino_msg_pb2.user_serial_request()
-    #     request.set_su_values.kp = kp
-    #     request.set_su_values.ki = ki
-    #     request.set_su_values.kd = kd
-
-    #     serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-    #     self.sequence += 1
-    #     #self.write_queue.append(serial_data)
-    #     return serial_data
-
-
 
     cmd_INO_RESET_ERROR_help = "resets INO board error"
     def cmd_INO_RESET_ERROR(self, gcmd):
@@ -542,28 +411,9 @@ class PLA_INO_Sensor:
         # self.sequence += 1
         # self.write_queue.append(serial_data)
 
+        #TODO MR 17.10.2024: put this function in a que
         self.ino_controller.request_ino_reset_error()
 
-
-    # def _create_error_reset_message(self):    
-    #     """custom gcode command to reset errors in INO board
-
-    #     :param gcmd: gcode command (object) that is processed
-    #     :type gcmd: ?
-    #     """
-    #     request = ino_msg_pb2.user_serial_request()
-    #     request.pla_cmd.command = ino_msg_pb2.clear_errors
-
-    #     serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-    #     self.sequence += 1
-    #     #self.write_queue.append(serial_data)
-    #     return serial_data
-
-    # # dead
-    # cmd_INO_DEBUG_OUT_help = "Command INO_DEBUG_OUT is deprecated!"
-    # def cmd_INO_DEBUG_OUT(self, gcmd):
-
-    #     logging.warning("Command INO_DEBUG_OUT is deprecated!")
 
 
     cmd_INO_READ_PID_VALUES_help = "returns current ino board PID values"
@@ -585,6 +435,8 @@ class PLA_INO_Sensor:
         # serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
         # self.sequence += 1
         # self.write_queue.append(serial_data)
+
+        #TODO MR 17.10.2024: put this function in a que
         self.ino_controller.request_ino_fw_version()
 
 
@@ -597,6 +449,8 @@ class PLA_INO_Sensor:
         # serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
         # self.sequence += 1
         # self.write_queue.append(serial_data)
+
+        #TODO MR 17.10.2024: put this function in a que
         self.ino_controller.request_ino_error()
 
 
@@ -611,21 +465,6 @@ class PLA_INO_Sensor:
 
                     logging.info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
 
-                    #print to mainsail console for testing  
-                    #self.gcode.respond_info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.temp_target}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
-                    #logging.info("text") # to log stuff in klippy log
-
-                    """
-                elif first_queue_element.WhichOneof('responses') == 'ino_settings':
-                    #ino_target_temperature = first_queue_element.ino_settings.target_temperature
-                    #ino_pid_target_temperature = first_queue_element.ino_settings.pid_target_temperature
-
-                    self.gcode.respond_info(f"ino_target_temperature:{first_queue_element.ino_settings.target_temperature}, ino_pid_target_temperature:{first_queue_element.ino_settings.pid_target_temperature}")
-
-                elif first_queue_element.WhichOneof('responses') == 'ino_su_settings':
-                    #stuff
-                    pass
-                    """
 
                 elif first_queue_element.WhichOneof('responses') == 'ino_general_msg':
                     if first_queue_element.ino_settings.HasField('kp'):  #check if kp is contained, only triplets of kp ki kd wil be sent
@@ -816,7 +655,6 @@ class InoController():
         packetizer = PlaSerialProtocol()
         encoded_request = packetizer.encode(request)
         self.reader_thread.write(encoded_request)
-        # print(f"Sent request: {encoded_request.hex()}")
 
     def heat_to_target_temp(self, target_temp):
         ino_request = ino_msg_pb2.user_serial_request()
@@ -835,9 +673,6 @@ class InoController():
         sends a heartbeat message to ino board to not trigger the heartbeat error
         TODO: currently, the message is a request for the hw_version. this needs to be replaced with a dedicated message
         """
-        # ino_request = ino_msg_pb2.user_serial_request()
-        # ino_request.set_settings.target_temperature = self.current_target_temp
-        # self.send_request(ino_request) 
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.get_hw_version
         self.send_request(ino_request)
@@ -891,15 +726,7 @@ class InoController():
         ino_request.pla_cmd.command = ino_msg_pb2.clear_errors
         self.send_request(ino_request)
 
-    # def set_inoboard_pid_values(self, kp, ki, kd):
-    #     """
-    #     set pid values in the ino board
-    #     """
-    #     ino_request = ino_msg_pb2.user_serial_request()
-    #     ino_request.set_su_values.kp = kp
-    #     ino_request.set_su_values.ki = ki
-    #     ino_request.set_su_values.kd = kd
-    #     self.send_request(ino_request)
+
 
 
     def process_serial_data(self):
@@ -911,5 +738,3 @@ class InoController():
         return responses
 
 
-# if __name__ == '__main__':
-#     ic = ino_controller('COM3')
