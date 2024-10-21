@@ -288,12 +288,23 @@ class PLA_INO_Sensor:
         #TODO MR:put this in a dedicated place where it belongs. This place is temporary! or check if manage heartbeat is executed, and if dont execute the rest
         self.ino_controller.manage_heartbeat()  
 
+        # while not len(self.write_queue) == 0:
+        #     text_line = self.write_queue.pop(0)
+        #     if text_line:
+        #         try:
+        #             logging.info(f"writing {text_line}")
+        #             self.ino_controller.reader_thread.write(text_line)
+        #         except Exception as e:
+        #             logging.info(f"J: error in serial communication (writing): {e}")
+        #             self.disconnect()
+        #             break
+
         while not len(self.write_queue) == 0:
             text_line = self.write_queue.pop(0)
             if text_line:
                 try:
                     logging.info(f"writing {text_line}")
-                    self.ino_controller.reader_thread.write(text_line)
+                    self.reader_thread.write(text_line)
                 except Exception as e:
                     logging.info(f"J: error in serial communication (writing): {e}")
                     self.disconnect()
@@ -662,6 +673,17 @@ class InoController():
         encoded_request = packetizer.encode(request)
         self.reader_thread.write(encoded_request)
 
+
+    def add_request_to_send_que(self, request):
+        """Adds the request to the send que that will be transmitted to ino board.
+
+        :param request: encoded protobuf message
+        :type request: ?
+        """
+        packetizer = PlaSerialProtocol()
+        encoded_request = packetizer.encode(request)
+        self.write_queue.append(encoded_request) #rename to send_queue
+
     def heat_to_target_temp(self, target_temp):
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = target_temp
@@ -723,6 +745,15 @@ class InoController():
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
         self.send_request(ino_request)
+
+    def request_ino_fw_version_new(self):
+        """
+        To get the firmware version from ino board.
+        execute this function, and the ino board will return a message containing its firmware version
+        """
+        ino_request = ino_msg_pb2.user_serial_request()
+        ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
+        self.add_request_to_send_que(ino_request)
 
     def request_ino_reset_error(self):
         """
