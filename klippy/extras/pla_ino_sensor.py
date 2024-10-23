@@ -129,14 +129,14 @@ class PlaInoSensor:
     #TODO MR 17.10.2024 _handle_disconnect and _handle_shutdown overlap, maybe merge?
     def _handle_disconnect(self):
 
-        logging.info("J: Klipper reports disconnect: Ino heater shutting down MARCUS TEST")
+        logging.info("J: Klipper reports disconnect: Ino heater shutting down")
         self.disconnect()
 
     def _handle_shutdown(self):
         logging.info("J: Klipper reports shutdown: Ino heater shutting down")
         self._handle_disconnect()
 
-    #def disconnect(self, disconnect_message="d"):
+    # TODO MR 32.10.24 I think that doesn't work because it tries to reconnect after a disconnect.
     def disconnect(self):
         """Once disconnect is called, the sensor will start shutting down.
         This includes:
@@ -145,8 +145,10 @@ class PlaInoSensor:
         - Unregisters the timers from this sensor
         """
         self.ino_controller.heat_to_target_temp(0)
+        logging.info(f"{timestamp()} emergency exit heat_to_target_temp(0)")
         time.sleep(0.001)
         self.ino_controller.start_pid_tuning(0)
+        logging.info(f"{timestamp()} start_pid_tuning(0)")
 
         #self.write_queue.append(disconnect_message)
         try:
@@ -189,7 +191,7 @@ class PlaInoSensor:
 
     ### INO specifics
 
-    # TODO: MR 17.10.2024: check if heat_to_target_temp needs to be put in a que
+    #TODO MR 23.10.2024: function is used by pla_ino_heater.py change this!
     def send_temp(self):
         self.ino_controller.heat_to_target_temp(self.target_temp)
 
@@ -247,11 +249,8 @@ class PlaInoSensor:
 
         
         if self._first_connect:
-            # message = self._create_error_reset_message()                                #resets error code in ino
-            # self.write_queue.append(message)
-
-            #TODO MR 29.08.24: decide if it would be better to throw those operations in a que and not execute them "now".
-            #TODO MR 29.08.24:  Some commands are put in a que and some are not. review this and make it consistent if needed.
+            self.ino_controller.heater_off_now()
+            self.ino_controller.start_pid_tuning(0)
             self.ino_controller.request_ino_reset_error()
             self.ino_controller.send_heartbeat()
 
@@ -390,7 +389,6 @@ class PlaInoSensor:
         """
 
         variable = gcmd.get_float('PID', 0.)
-
         self.ino_controller.start_pid_tuning(variable)
 
 
@@ -634,21 +632,11 @@ class InoController():
         self.serial.close()
 
 
-    # def send_request(self, request):
-    #     packetizer = PlaSerialProtocol()
-    #     encoded_request = packetizer.encode(request)
-    #     self.reader_thread.write(encoded_request)
+    def send_request_now(self, request):
+        packetizer = PlaSerialProtocol()
+        encoded_request = packetizer.encode(request)
+        self.reader_thread.write(encoded_request)
 
-
-    # def add_request_to_sendqueue(self, request):
-    #     """Adds the request to the send que that will be transmitted to ino board.
-
-    #     :param request: encoded protobuf message
-    #     :type request: ?
-    #     """
-    #     packetizer = PlaSerialProtocol()
-    #     encoded_request = packetizer.encode(request)
-    #     self.PlaInoSensor.write_queue.append(encoded_request) #rename to send_queue
 
     def heat_to_target_temp(self, target_temp):
         """
@@ -664,13 +652,13 @@ class InoController():
         self.pla_obj.add_request_to_sendqueue(ino_request)
         self.current_target_temp = target_temp
 
-    def heater_off(self):
+    def heater_off_now(self):
         """
         Adds a request to the send queue to turn off the heater.
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = 0
-        self.pla_obj.add_request_to_sendqueue(ino_request)
+        self.send_request_now(ino_request)
         self.current_target_temp = 0
 
     def send_heartbeat(self):
@@ -725,7 +713,7 @@ class InoController():
     #     """
     #     ino_request = ino_msg_pb2.user_serial_request()
     #     ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
-    #     self.send_request(ino_request)
+    #     self.send_request_now(ino_request)
 
     def request_ino_fw_version(self):
         """
@@ -753,3 +741,10 @@ class InoController():
         return responses
 
 
+def timestamp():
+    """
+    Returns a timestamp in the format HH:MM:SS.ms dd.mm.yy
+    string
+    """
+    time_and_date = time.strftime("%H:%M:%S." + str(time.time()).split('.')[1][:4] + " %d.%m.%y", time.localtime())
+    return time_and_date
