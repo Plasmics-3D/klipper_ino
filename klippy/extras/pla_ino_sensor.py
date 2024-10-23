@@ -67,7 +67,6 @@ class PlaInoSensor:
 
         self.flag = 126
         self.escape = 125
-        self.sequence = 0
 
         self.ino_controller = None
 
@@ -193,9 +192,7 @@ class PlaInoSensor:
     # TODO: MR 17.10.2024: check if heat_to_target_temp needs to be put in a que
     def send_temp(self):
         self.ino_controller.heat_to_target_temp(self.target_temp)
-        # serial_data = protobuf_utils.create_heating_request(self.target_temp, self.sequence,self.flag)
-        # self.sequence += 1
-        # self.write_queue.append(serial_data)
+
 
     def _sample_PLA_INO(self, eventtime):
         """This function is called infinitely by the reactor class every SERIAL_TIMER interval.
@@ -292,7 +289,8 @@ class PlaInoSensor:
             text_line = self.write_queue.pop(0)
             if text_line:
                 try:
-                    logging.info(f"writing {text_line}")
+                    time_and_date = time.strftime("%H:%M:%S." + str(time.time()).split('.')[1][:4] + " %d.%m.%y", time.localtime())
+                    logging.info(f"{time_and_date} writing {text_line}")
                     self.ino_controller.reader_thread.write(text_line)
                 except Exception as e:
                     logging.info(f"J: error in serial communication (writing): {e}")
@@ -395,14 +393,6 @@ class PlaInoSensor:
 
         self.ino_controller.start_pid_tuning(variable)
 
-        # request = ino_msg_pb2.user_serial_request()
-        # request.set_settings.pid_target_temperature = variable
-        # serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        # self.sequence += 1
-        # self.write_queue.append(serial_data)
-
-
-
 
     cmd_INO_RESET_ERROR_help = "resets INO board error"
     def cmd_INO_RESET_ERROR(self, gcmd):
@@ -411,53 +401,27 @@ class PlaInoSensor:
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-        # request = ino_msg_pb2.user_serial_request()
-        # request.pla_cmd.command = ino_msg_pb2.clear_errors
 
-        # serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        # self.sequence += 1
-        # self.write_queue.append(serial_data)
-
-        #TODO MR 17.10.2024: put this function in a que
         self.ino_controller.request_ino_reset_error()
 
 
 
     cmd_INO_READ_PID_VALUES_help = "returns current ino board PID values"
     def cmd_INO_READ_PID_VALUES(self, gcmd):
-        request = ino_msg_pb2.user_serial_request()
-        request.pla_cmd.command = ino_msg_pb2.read_info #MR TODO: change read_info to better name, but needs to be implemented in Protobuf
 
-        serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        self.sequence += 1
-        self.write_queue.append(serial_data)
-        # TODO Lee?
+        self.ino_controller.request_ino_pid_values()
 
 
     cmd_INO_FIRMWARE_VERSION_help = "returns firmware version of INO board"
     def cmd_INO_FIRMWARE_VERSION(self, gcmd):
-        # request = ino_msg_pb2.user_serial_request()
-        # request.pla_cmd.command = ino_msg_pb2.get_fw_version
 
-        # serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        # self.sequence += 1
-        # self.write_queue.append(serial_data)
-
-        #TODO MR 17.10.2024: put this function in a que
         self.ino_controller.request_ino_fw_version()
 
 
 
     cmd_INO_ERROR_OUTPUT_help = "returns current error code of INO board"
     def cmd_INO_ERROR_OUTPUT(self, gcmd):
-        # request = ino_msg_pb2.user_serial_request()
-        # request.pla_cmd.command = ino_msg_pb2.read_errors
 
-        # serial_data = protobuf_utils.create_request(request, self.sequence,self.flag)
-        # self.sequence += 1
-        # self.write_queue.append(serial_data)
-
-        #TODO MR 17.10.2024: put this function in a que
         self.ino_controller.request_ino_error()
 
 
@@ -467,10 +431,11 @@ class PlaInoSensor:
         while not len(self.read_queue) == 0:   
             first_queue_element = self.read_queue.pop(0)
             try:
+                time_and_date = time.strftime("%H:%M:%S." + str(time.time()).split('.')[1][:4] + " %d.%m.%y", time.localtime())
                 if first_queue_element.WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
                     self.temp = first_queue_element.ino_standard_msg.temp                # get temp from standard message
 
-                    logging.info(f"tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
+                    logging.info(f"{time_and_date} tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
 
 
                 elif first_queue_element.WhichOneof('responses') == 'ino_general_msg':
@@ -485,7 +450,6 @@ class PlaInoSensor:
 
                 elif first_queue_element.WhichOneof('responses') == 'log_msg':
                     if (first_queue_element.log_msg.message.startswith("s_")):
-                       time_and_date = time.strftime("%H:%M:%S %d.%m.%y", time.localtime())
                        logging.info(f"{time_and_date} {first_queue_element.log_msg.message}") 
 
                     elif (first_queue_element.log_msg.message.startswith("error_code:")):
@@ -579,8 +543,9 @@ class PlaSerialProtocol():
 
     def encode(self, ino_request):
         serial_request = ino_request.SerializeToString()
-        sequence = 0 
+
         # TODO: Remove sequence number
+        sequence = 0         
         serial_request = bytes([sequence]) + serial_request
 
         checksum = self.calculate_checksum(serial_request)
