@@ -669,10 +669,10 @@ class InoController():
         self.serial.close()
 
 
-    def send_request(self, request):
-        packetizer = PlaSerialProtocol()
-        encoded_request = packetizer.encode(request)
-        self.reader_thread.write(encoded_request)
+    # def send_request(self, request):
+    #     packetizer = PlaSerialProtocol()
+    #     encoded_request = packetizer.encode(request)
+    #     self.reader_thread.write(encoded_request)
 
 
     # def add_request_to_sendqueue(self, request):
@@ -686,16 +686,25 @@ class InoController():
     #     self.PlaInoSensor.write_queue.append(encoded_request) #rename to send_queue
 
     def heat_to_target_temp(self, target_temp):
+        """
+        Heats ino to the specified target temperature.
+
+        This function creates a protobuf message, and adds the request to the send queue.
+
+        @param target_temp: The desired target temperature to heat to.
+        @type target_temp: float
+        """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = target_temp
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
         self.current_target_temp = target_temp
 
     def heater_off(self):
+        """
+        Adds a request to the send queue to turn off the heater.
+        """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = 0
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
         self.current_target_temp = 0
 
@@ -706,7 +715,6 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.get_hw_version
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def manage_heartbeat(self):
@@ -725,7 +733,6 @@ class InoController():
         """  
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.pid_target_temperature = target_temp
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_pid_values(self):
@@ -735,7 +742,6 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.read_info
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_error(self):
@@ -745,7 +751,6 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.read_errors
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     # def request_ino_fw_version_old(self):
@@ -772,7 +777,6 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.clear_errors
-        #self.send_request(ino_request)
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def process_serial_data(self):
