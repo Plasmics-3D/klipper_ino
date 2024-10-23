@@ -28,7 +28,7 @@ HEARTBEAT_TIMER = 0.3
 
 
 
-class PLA_INO_Sensor:
+class PlaInoSensor:
     """Custom class for the PLA_INO sensor"""
 
     def __init__(self, config):
@@ -43,7 +43,7 @@ class PLA_INO_Sensor:
         self.gcode = self.printer.lookup_object("gcode")
         self.reactor = self.printer.get_reactor()
         self.name = config.get_name().split()[-1]
-        self.printer.add_object("pla_ino_sensor " + self.name, self)
+        self.printer.add_object("PLA_INO_SENSOR " + self.name, self)
         self.heater = None
         self.read_timer = None
         self.temp = 0.0
@@ -230,7 +230,7 @@ class PLA_INO_Sensor:
         """Initializes the INO by starting a serial connection to the ino board
         """
         try:
-            self.ino_controller = InoController(self.serial_port)
+            self.ino_controller = InoController(self,self.serial_port)
             logging.info("Connection to Ino successful.")
             self._failed_connection_attempts = 0
         except Exception as e:
@@ -288,27 +288,17 @@ class PLA_INO_Sensor:
         #TODO MR:put this in a dedicated place where it belongs. This place is temporary! or check if manage heartbeat is executed, and if dont execute the rest
         self.ino_controller.manage_heartbeat()  
 
-        # while not len(self.write_queue) == 0:
-        #     text_line = self.write_queue.pop(0)
-        #     if text_line:
-        #         try:
-        #             logging.info(f"writing {text_line}")
-        #             self.ino_controller.reader_thread.write(text_line)
-        #         except Exception as e:
-        #             logging.info(f"J: error in serial communication (writing): {e}")
-        #             self.disconnect()
-        #             break
-
         while not len(self.write_queue) == 0:
             text_line = self.write_queue.pop(0)
             if text_line:
                 try:
                     logging.info(f"writing {text_line}")
-                    self.reader_thread.write(text_line)
+                    self.ino_controller.reader_thread.write(text_line)
                 except Exception as e:
                     logging.info(f"J: error in serial communication (writing): {e}")
                     self.disconnect()
                     break
+
 
         # logging.info("J: Write queue is empty.")
         return eventtime + SERIAL_TIMER
@@ -509,6 +499,16 @@ class PLA_INO_Sensor:
                 
             except:
                 logging.info(f"\nmessage not recognized: {first_queue_element}\n")
+    
+    def add_request_to_sendqueue(self, request):
+        """Adds the request to the send que that will be transmitted to ino board.
+
+        :param request: encoded protobuf message
+        :type request: ?
+        """
+        packetizer = PlaSerialProtocol()
+        encoded_request = packetizer.encode(request)
+        self.write_queue.append(encoded_request) #rename to send_queue
 
            
 
@@ -517,13 +517,11 @@ def load_config(config):
     # Register sensor
     pheaters = config.get_printer().load_object(config, "heaters")
     logging.info(f"J: heater in ino sensor: {pheaters.heaters}")
-    pheaters.add_sensor_factory("PLA_INO_SENSOR", PLA_INO_Sensor)
+    pheaters.add_sensor_factory("PLA_INO_SENSOR", PlaInoSensor)
 
 
 
 ####TODO LEE -> Organize the code better
-
-
 class PlaSerialProtocol():
 
     def __init__(self) -> None:
@@ -604,6 +602,7 @@ class PlaSerialProtocol():
         return self.decode_protobuf(bytes(decoded_bytes[1:-1]))
 
 
+
 class PlaSerialHandler(Packetizer):
 
     def __init__(self) -> None:
@@ -628,9 +627,11 @@ class PlaSerialHandler(Packetizer):
         self.queue = queue
 
 
+
 class InoController():
 
-    def __init__(self, serial_port) -> None:
+    def __init__(self, pla_obj, serial_port) -> None:
+        self.pla_obj = pla_obj
         self.serial = None
         self.queue = Queue()
         self.packet_handler = PlaSerialHandler()
@@ -674,26 +675,28 @@ class InoController():
         self.reader_thread.write(encoded_request)
 
 
-    def add_request_to_send_que(self, request):
-        """Adds the request to the send que that will be transmitted to ino board.
+    # def add_request_to_sendqueue(self, request):
+    #     """Adds the request to the send que that will be transmitted to ino board.
 
-        :param request: encoded protobuf message
-        :type request: ?
-        """
-        packetizer = PlaSerialProtocol()
-        encoded_request = packetizer.encode(request)
-        self.write_queue.append(encoded_request) #rename to send_queue
+    #     :param request: encoded protobuf message
+    #     :type request: ?
+    #     """
+    #     packetizer = PlaSerialProtocol()
+    #     encoded_request = packetizer.encode(request)
+    #     self.PlaInoSensor.write_queue.append(encoded_request) #rename to send_queue
 
     def heat_to_target_temp(self, target_temp):
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = target_temp
-        self.send_request(ino_request)
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
         self.current_target_temp = target_temp
 
     def heater_off(self):
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = 0
-        self.send_request(ino_request)
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
         self.current_target_temp = 0
 
     def send_heartbeat(self):
@@ -703,7 +706,8 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.get_hw_version
-        self.send_request(ino_request)
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def manage_heartbeat(self):
         """
@@ -714,10 +718,15 @@ class InoController():
             self.send_heartbeat()
             self.last_heartbeat = time.time() 
 
-    def start_pid_tuning(self, target_temp):   
+    def start_pid_tuning(self, target_temp):
+        """
+        send command to ino board to start PID tuning
+        target_temp: the target temperature to do the PID tuning at
+        """  
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.pid_target_temperature = target_temp
-        self.send_request(ino_request)
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_pid_values(self):
         """
@@ -726,7 +735,8 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.read_info
-        self.send_request(ino_request)
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_error(self):
         """
@@ -735,7 +745,17 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.read_errors
-        self.send_request(ino_request)
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
+
+    # def request_ino_fw_version_old(self):
+    #     """
+    #     To get the firmware version from ino board.
+    #     execute this function, and the ino board will return a message containing its firmware version
+    #     """
+    #     ino_request = ino_msg_pb2.user_serial_request()
+    #     ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
+    #     self.send_request(ino_request)
 
     def request_ino_fw_version(self):
         """
@@ -744,16 +764,7 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
-        self.send_request(ino_request)
-
-    def request_ino_fw_version_new(self):
-        """
-        To get the firmware version from ino board.
-        execute this function, and the ino board will return a message containing its firmware version
-        """
-        ino_request = ino_msg_pb2.user_serial_request()
-        ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
-        self.add_request_to_send_que(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_reset_error(self):
         """
@@ -761,10 +772,8 @@ class InoController():
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.clear_errors
-        self.send_request(ino_request)
-
-
-
+        #self.send_request(ino_request)
+        self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def process_serial_data(self):
         responses = []
