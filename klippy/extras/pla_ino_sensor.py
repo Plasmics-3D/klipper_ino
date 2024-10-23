@@ -126,7 +126,6 @@ class PlaInoSensor:
         if self.ino_controller is None:
             self._init_PLA_INO()
 
-    #TODO MR 17.10.2024 _handle_disconnect and _handle_shutdown overlap, maybe merge?
     def _handle_disconnect(self):
 
         logging.info("J: Klipper reports disconnect: Ino heater shutting down")
@@ -136,7 +135,7 @@ class PlaInoSensor:
         logging.info("J: Klipper reports shutdown: Ino heater shutting down")
         self._handle_disconnect()
 
-    # TODO MR 32.10.24 I think that doesn't work because it tries to reconnect after a disconnect.
+
     def disconnect(self):
         """Once disconnect is called, the sensor will start shutting down.
         This includes:
@@ -144,16 +143,12 @@ class PlaInoSensor:
         - closing of the serial connection to the INO board
         - Unregisters the timers from this sensor
         """
-        self.ino_controller.heat_to_target_temp(0)
-        logging.info(f"{timestamp()} emergency exit heat_to_target_temp(0)")
-        time.sleep(0.001)
-        self.ino_controller.start_pid_tuning(0)
-        logging.info(f"{timestamp()} start_pid_tuning(0)")
+        self.ino_controller.heater_off_now()
+        # TODO MR 24.10.2024: add same function for pid off
 
-        #self.write_queue.append(disconnect_message)
         try:
             self.ino_controller = None
-            # self.serial.close()   #TODO MR 17.10.2024: check if enabling this, will shut off the ino while heating after emergency stop
+            # self.serial.close()   #TODO MR 17.10.2024: ask joes if yes or no
             logging.info("Serial port closed due to disconnect.")
         except Exception as e:
             logging.error(f"J: Disconnection failed due to: {e}")
@@ -211,8 +206,7 @@ class PlaInoSensor:
             try:
                 if self.ino_controller is None:
                     self._handle_connect()
-                # else:
-                #     self.send_temp()
+
             except serial.SerialException:
                 logging.error("Unable to communicate with Ino. Sample")
                 self.temp = 0.0
@@ -280,7 +274,6 @@ class PlaInoSensor:
         :return: tell reactor not to call this function any more (if not available)
         :rtype: ?
         """
-
         #TODO MR:put this in a dedicated place where it belongs. This place is temporary! or check if manage heartbeat is executed, and if dont execute the rest
         self.ino_controller.manage_heartbeat()  
 
@@ -288,14 +281,12 @@ class PlaInoSensor:
             text_line = self.write_queue.pop(0)
             if text_line:
                 try:
-                    time_and_date = time.strftime("%H:%M:%S." + str(time.time()).split('.')[1][:4] + " %d.%m.%y", time.localtime())
-                    logging.info(f"{time_and_date} writing {text_line}")
+                    logging.info(f"{timestamp()} writing {text_line}")
                     self.ino_controller.reader_thread.write(text_line)
                 except Exception as e:
                     logging.info(f"J: error in serial communication (writing): {e}")
                     self.disconnect()
                     break
-
 
         # logging.info("J: Write queue is empty.")
         return eventtime + SERIAL_TIMER
@@ -387,7 +378,6 @@ class PlaInoSensor:
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-
         variable = gcmd.get_float('PID', 0.)
         self.ino_controller.start_pid_tuning(variable)
 
@@ -399,7 +389,6 @@ class PlaInoSensor:
         :param gcmd: gcode command (object) that is processed
         :type gcmd: ?
         """
-
         self.ino_controller.request_ino_reset_error()
 
 
@@ -423,17 +412,16 @@ class PlaInoSensor:
         self.ino_controller.request_ino_error()
 
 
-
+    #TODO MR 24.10.24 add a wait function if queue is longer than 1 maybe that will print all messages?
     def _process_read_queue(self):
         # Process any decoded lines from the device
         while not len(self.read_queue) == 0:   
             first_queue_element = self.read_queue.pop(0)
             try:
-                time_and_date = time.strftime("%H:%M:%S." + str(time.time()).split('.')[1][:4] + " %d.%m.%y", time.localtime())
                 if first_queue_element.WhichOneof('responses') == 'ino_standard_msg':    # receive standard message from ino, 
                     self.temp = first_queue_element.ino_standard_msg.temp                # get temp from standard message
 
-                    logging.info(f"{time_and_date} tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
+                    logging.info(f"{timestamp()} tick:{first_queue_element.ino_standard_msg.tick}, temperature:{first_queue_element.ino_standard_msg.temp}, target_temp:{first_queue_element.ino_standard_msg.temp_target}, error_code:{first_queue_element.ino_standard_msg.error_code}, status:{first_queue_element.ino_standard_msg.status}, DC:{first_queue_element.ino_standard_msg.DC}")
 
 
                 elif first_queue_element.WhichOneof('responses') == 'ino_general_msg':
@@ -448,7 +436,7 @@ class PlaInoSensor:
 
                 elif first_queue_element.WhichOneof('responses') == 'log_msg':
                     if (first_queue_element.log_msg.message.startswith("s_")):
-                       logging.info(f"{time_and_date} {first_queue_element.log_msg.message}") 
+                       logging.info(f"{timestamp()} {first_queue_element.log_msg.message}") 
 
                     elif (first_queue_element.log_msg.message.startswith("error_code:")):
                         self.gcode.respond_info( self._get_error_code(first_queue_element.log_msg.message) )
@@ -463,7 +451,7 @@ class PlaInoSensor:
                 logging.info(f"\nmessage not recognized: {first_queue_element}\n")
     
     def add_request_to_sendqueue(self, request):
-        """Adds the request to the send que that will be transmitted to ino board.
+        """Adds the request to the send queue that will be transmitted to ino board.
 
         :param request: encoded protobuf message
         :type request: ?
@@ -633,14 +621,18 @@ class InoController():
 
 
     def send_request_now(self, request):
+        """sends the request now, and not add it to the send queue to be sent later
+
+        :param request: encoded protobuf message
+        :type request: _type_
+        """
         packetizer = PlaSerialProtocol()
         encoded_request = packetizer.encode(request)
         self.reader_thread.write(encoded_request)
 
 
     def heat_to_target_temp(self, target_temp):
-        """
-        Heats ino to the specified target temperature.
+        """Heats ino to the specified target temperature.
 
         This function creates a protobuf message, and adds the request to the send queue.
 
@@ -653,8 +645,7 @@ class InoController():
         self.current_target_temp = target_temp
 
     def heater_off_now(self):
-        """
-        Adds a request to the send queue to turn off the heater.
+        """Adds a request to the send queue to turn off the heater.
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = 0
@@ -662,8 +653,7 @@ class InoController():
         self.current_target_temp = 0
 
     def send_heartbeat(self):
-        """
-        sends a heartbeat message to ino board to not trigger the heartbeat error
+        """sends a heartbeat message to ino board to not trigger the heartbeat error
         TODO: currently, the message is a request for the hw_version. this needs to be replaced with a dedicated message
         """
         ino_request = ino_msg_pb2.user_serial_request()
@@ -671,8 +661,7 @@ class InoController():
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def manage_heartbeat(self):
-        """
-        needs to be executed in a loop
+        """needs to be executed in a loop
         checks if it is time to send a heartbeat message and sends it if necessary
         """
         if time.time() - self.last_heartbeat > HEARTBEAT_TIMER:
@@ -680,8 +669,7 @@ class InoController():
             self.last_heartbeat = time.time() 
 
     def start_pid_tuning(self, target_temp):
-        """
-        send command to ino board to start PID tuning
+        """send command to ino board to start PID tuning
         target_temp: the target temperature to do the PID tuning at
         """  
         ino_request = ino_msg_pb2.user_serial_request()
@@ -689,8 +677,7 @@ class InoController():
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_pid_values(self):
-        """
-        To read PID values etc from ino board.
+        """To read PID values etc from ino board.
         execute this function, and the ino board will return a protobuf message containing "read_info" this needs to be decoded
         """
         ino_request = ino_msg_pb2.user_serial_request()
@@ -698,26 +685,15 @@ class InoController():
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_error(self):
-        """
-        To get error values etc from ino board.
+        """To get error values etc from ino board.
         execute this function, and the ino board will return a message containing the current error and last error
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.read_errors
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
-    # def request_ino_fw_version_old(self):
-    #     """
-    #     To get the firmware version from ino board.
-    #     execute this function, and the ino board will return a message containing its firmware version
-    #     """
-    #     ino_request = ino_msg_pb2.user_serial_request()
-    #     ino_request.pla_cmd.command = ino_msg_pb2.get_fw_version
-    #     self.send_request_now(ino_request)
-
     def request_ino_fw_version(self):
-        """
-        To get the firmware version from ino board.
+        """To get the firmware version from ino board.
         execute this function, and the ino board will return a message containing its firmware version
         """
         ino_request = ino_msg_pb2.user_serial_request()
@@ -725,8 +701,7 @@ class InoController():
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def request_ino_reset_error(self):
-        """
-        request, the ino board to reset its errors
+        """request, the ino board to reset its errors
         """
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.pla_cmd.command = ino_msg_pb2.clear_errors
@@ -742,9 +717,7 @@ class InoController():
 
 
 def timestamp():
-    """
-    Returns a timestamp in the format HH:MM:SS.ms dd.mm.yy
-    string
+    """Returns a timestamp in the format HH:MM:SS.ms dd.mm.yy
     """
     time_and_date = time.strftime("%H:%M:%S." + str(time.time()).split('.')[1][:4] + " %d.%m.%y", time.localtime())
     return time_and_date
