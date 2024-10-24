@@ -310,57 +310,29 @@ class PlaInoSensor:
         :param message: message that contains the error code
         :type message: str
         """
-        error_code_nr = message.split(" ")[1]
+        error_code_nr_list = message.split(" ")[1::2] #extracts error code nr and past error code nr out of message
 
-        if error_code_nr == "0":
-            error_code = "no_error"
-        elif error_code_nr == "1":
-            error_code = "heating_too_fast"
-        elif error_code_nr == "2":
-            error_code = "heating_too_slow"
-        elif error_code_nr == "3":
-            error_code = "exceeded_max_temp"
-        elif error_code_nr == "4":
-            error_code = "no_heartbeat_received"
-        elif error_code_nr == "5":
-            error_code = "temperature_unstable"
-        elif error_code_nr == "6":
-            error_code = "thermocouple_disconnected"
-        elif error_code_nr == "7":
-            error_code = "user_shutdown"
-        elif error_code_nr == "8":
-            error_code = "subceeded_min_temp"
-        elif error_code_nr == "9":
-            error_code = "temperature_read_error"
-        else:
-            error_code = "unknown_error"
+        # Define a dictionary mapping error codes to error messages
+        error_code_mapping = {
+            "0": "no_error",
+            "1": "heating_too_fast",
+            "2": "heating_too_slow",
+            "3": "exceeded_max_temp",
+            "4": "no_heartbeat_received",
+            "5": "temperature_unstable",
+            "6": "thermocouple_disconnected",
+            "7": "user_shutdown",
+            "8": "subceeded_min_temp",
+            "9": "temperature_read_error"
+        }
 
-        past_error_code_nr = message.split(" ")[3]
+        error_code = 2*[None]
 
-        if past_error_code_nr == "0":
-            past_error_code = "no_error"
-        elif past_error_code_nr == "1":
-            past_error_code = "heating_too_fast"
-        elif past_error_code_nr == "2":
-            past_error_code = "heating_too_slow"
-        elif past_error_code_nr == "3":
-            past_error_code = "exceeded_max_temp"
-        elif past_error_code_nr == "4":
-            past_error_code = "no_heartbeat_received"
-        elif past_error_code_nr == "5":
-            past_error_code = "temperature_unstable"
-        elif past_error_code_nr == "6":
-            past_error_code = "thermocouple_disconnected"
-        elif past_error_code_nr == "7":
-            past_error_code = "user_shutdown"
-        elif past_error_code_nr == "8":
-            past_error_code = "subceeded_min_temp"
-        elif error_code_nr == "9":
-            error_code = "temperature_read_error"
-        else:
-            error_code = "unknown_error"
+        for i in range(2):
+            error_code[i] = error_code_mapping.get( error_code_nr_list[i], "unknown_error")
 
-        return "\nnow: " + error_code + "  \npast: " + past_error_code
+        return "\nnow: " + error_code[0] + "  \npast: " + error_code[1]
+    
 
     cmd_INO_PID_TUNE_help = "z.B.: INO_PID_TUNE PID=250"
     def cmd_INO_PID_TUNE(self, gcmd):
