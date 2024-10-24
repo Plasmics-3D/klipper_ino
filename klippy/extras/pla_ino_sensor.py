@@ -126,7 +126,6 @@ class PlaInoSensor:
             self._init_PLA_INO()
 
     def _handle_disconnect(self):
-
         logging.info("J: Klipper reports disconnect: Ino heater shutting down")
         self.disconnect()
 
@@ -146,7 +145,7 @@ class PlaInoSensor:
 
         try:
             self.ino_controller = None
-            # self.serial.close()   #TODO MR 17.10.2024: ask joey if yes or no
+            self.serial.close()   #TODO MR 17.10.2024: ask joey if yes or no
             logging.info("Serial port closed due to disconnect.")
         except Exception as e:
             logging.error(f"J: Disconnection failed due to: {e}")
@@ -185,8 +184,9 @@ class PlaInoSensor:
 
     ### INO specifics
 
-    # TODO MR 23.10.2024: function is used by pla_ino_heater.py change this!
     def send_temp(self):
+        """function used by pla_ino_heater, sends temperature to ino board
+        """
         self.ino_controller.heat_to_target_temp(self.target_temp)
 
     def _sample_PLA_INO(self, eventtime):
@@ -312,7 +312,6 @@ class PlaInoSensor:
         """
         error_code_nr_list = message.split(" ")[1::2] #extracts error code nr and past error code nr out of message
 
-        # Define a dictionary mapping error codes to error messages
         error_code_mapping = {
             "0": "no_error",
             "1": "heating_too_fast",
@@ -584,10 +583,12 @@ class InoController:
 
     def heater_off_now(self):
         """Adds a request to the send queue to turn off the heater."""
+        logging.info("Turning off heater NOW")
         ino_request = ino_msg_pb2.user_serial_request()
         ino_request.set_settings.target_temperature = 0
         self.send_request_now(ino_request)
         self.current_target_temp = 0
+        logging.info("Turning off heater NOW END")
 
     def send_heartbeat(self):
         """sends a heartbeat message to ino board to not trigger the heartbeat error
@@ -644,10 +645,14 @@ class InoController:
         self.pla_obj.add_request_to_sendqueue(ino_request)
 
     def process_serial_data(self):
+        """Processes serial data from the queue and returns responses."""
         responses = []
-        while not self.queue.empty():
-            ino_response = self.queue.get()
-            responses.append(ino_response)
+        try:
+            while not self.queue.empty():
+                ino_response = self.queue.get()
+                responses.append(ino_response)
+        except Exception as e:
+            logging.info(f"Error processing serial data: {e}")
 
         return responses
 
